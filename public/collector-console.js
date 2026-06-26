@@ -1,7 +1,7 @@
-window.stopWatchAll && stopWatchAll();
+﻿window.stopWatchAll && stopWatchAll();
 
 (function () {
-    const DASHBOARD_URL = "https://mangsang-alarm-dashboard.onrender.com";
+    const DASHBOARD_URL = "https://go-mangsang.onrender.com";
 
     const CATEGORIES = [
         { code: "1300", name: "든바다" },
@@ -297,3 +297,4 @@ ${Object.keys(cancelDetectedTimes).length
     console.log("🚀 4개 구역 X 40일치 전체 일정 스캔 + 서버 대시보드 시작...");
     batchCheckAll();
 })();
+
