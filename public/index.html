@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>망상리조트 알림 대시보드</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Mangsang Alarm Dashboard</p>
+        <h1>망상리조트 취소 감지 대시보드</h1>
+        <p class="sub">콘솔 수집기가 보내는 감지 정보를 서버에 모아 실시간으로 보여줍니다.</p>
+      </div>
+      <div class="status-pill" id="serverState">확인 중</div>
+    </section>
+
+    <section class="cards">
+      <article class="card danger">
+        <span>현재 감지</span>
+        <strong id="activeCount">0</strong>
+      </article>
+      <article class="card">
+        <span>누적 감지</span>
+        <strong id="eventCount">0</strong>
+      </article>
+      <article class="card">
+        <span>조회 횟수</span>
+        <strong id="scanCount">0</strong>
+      </article>
+      <article class="card">
+        <span>요청 조합</span>
+        <strong id="requestCount">0</strong>
+      </article>
+    </section>
+
+    <section class="panel meta">
+      <div><span>감시 범위</span><b id="range">-</b></div>
+      <div><span>갱신 주기</span><b id="interval">-</b></div>
+      <div><span>서버 수신</span><b id="lastReportAt">-</b></div>
+      <div><span>최근 갱신</span><b id="lastRefreshAt">-</b></div>
+    </section>
+
+    <section class="toolbar">
+      <input id="filterInput" placeholder="날짜 / 구역 / 객실 / 코드 검색">
+      <button id="refreshBtn">새로고침</button>
+      <button id="resetBtn" class="ghost">기록 리셋</button>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>🚨 현재 실시간 취소 진행 중</h2>
+        <span id="activeUpdated">-</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>구역</th>
+              <th>객실</th>
+              <th>시설코드</th>
+              <th>유형코드</th>
+              <th>예약코드</th>
+              <th>감지시각</th>
+            </tr>
+          </thead>
+          <tbody id="activeRows">
+            <tr><td colspan="7" class="empty">현재 감지된 취소분 없음</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>⏱️ 최초 감지 기록 누적</h2>
+        <span>최신순</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>구역</th>
+              <th>객실</th>
+              <th>시설코드</th>
+              <th>유형코드</th>
+              <th>예약코드</th>
+              <th>최초감지</th>
+            </tr>
+          </thead>
+          <tbody id="eventRows">
+            <tr><td colspan="7" class="empty">누적 기록 없음</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
