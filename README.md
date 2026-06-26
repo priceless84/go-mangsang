@@ -24,7 +24,9 @@ http://localhost:3000
 
 ## Render 배포
 
-- Root Directory: `dashboard`
+GitHub 저장소 루트에 `server.js`가 있는 구조로 배포할 때는 아래처럼 설정합니다.
+
+- Root Directory: 비워두기
 - Build Command: 비워두기
 - Start Command: `node server.js`
 - Environment: Node
