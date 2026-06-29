@@ -744,6 +744,7 @@
     const dateStart = document.querySelector("#dateStart");
     const dateEnd = document.querySelector("#dateEnd");
     const chips = [...document.querySelectorAll(".chip")];
+    const facilityActionButtons = [...document.querySelectorAll("[data-facility-action]")];
     const modeButtons = [...document.querySelectorAll("[data-date-mode]")];
     const intervalButtons = [...document.querySelectorAll("[data-interval]")];
 
@@ -890,6 +891,13 @@
         const isActive = selected.has(chip.dataset.facility);
         chip.classList.toggle("active", isActive);
         chip.setAttribute("aria-pressed", String(isActive));
+      });
+      facilityActionButtons.forEach(button => {
+        const isAll = button.dataset.facilityAction === "all" && selected.size === CATEGORIES.length;
+        const isNone = button.dataset.facilityAction === "none" && selected.size === 0;
+        const isActive = isAll || isNone;
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
       });
       modeButtons.forEach(button => {
         const isActive = button.dataset.dateMode === mode;
