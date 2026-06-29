@@ -2,104 +2,960 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>망상리조트 알림 대시보드</title>
-  <link rel="stylesheet" href="/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>망상 모바일 취소시설 모니터링 V2</title>
+  <style>
+    :root {
+      --bg: #eef4f0;
+      --card: #ffffff;
+      --ink: #17211b;
+      --muted: #69786f;
+      --line: #d7e3dc;
+      --green: #0d815b;
+      --green-dark: #0a5f44;
+      --soft: #e9f7f0;
+      --warn: #b85c00;
+      --shadow: 0 10px 26px rgba(25, 48, 38, .10);
+      --mono: "Consolas", "D2Coding", "Courier New", monospace;
+      --sans: "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      background:
+        linear-gradient(180deg, rgba(13, 129, 91, .12), transparent 210px),
+        var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      letter-spacing: 0;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 0;
+      background: rgba(238, 244, 240, .92);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--green);
+      color: #fff;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 32px;
+      padding: 0 10px;
+      border: 1px solid #b9e2d0;
+      border-radius: 999px;
+      background: #edfff6;
+      color: var(--green-dark);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .status::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #21bf7b;
+      box-shadow: 0 0 0 5px rgba(33, 191, 123, .16);
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .95);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .controls {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field-title {
+      color: #26382f;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .chip,
+    .mini-btn,
+    .seg-btn,
+    .action-btn {
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdfb;
+      color: #273b31;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .chip {
+      flex: 0 0 auto;
+      padding: 0 11px;
+    }
+
+    .chip.active,
+    .seg-btn.active {
+      border-color: var(--green);
+      background: var(--green);
+      color: white;
+    }
+
+    .chip.active::before {
+      content: "✓ ";
+    }
+
+    .mini-btn {
+      padding: 0 9px;
+    }
+
+    .seg {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .seg-btn {
+      border: 0;
+      background: transparent;
+    }
+
+    .dates {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    input[type="date"] {
+      width: 100%;
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 8px;
+      color: var(--ink);
+      background: #fff;
+      font-size: 12px;
+    }
+
+    input:disabled {
+      color: #99a69f;
+      background: #f2f6f4;
+    }
+
+    .interval {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 5px;
+    }
+
+    .action-btn {
+      width: 100%;
+      background: #fff;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 1px solid var(--line);
+      background: #fbfdfb;
+    }
+
+    .stat {
+      min-width: 0;
+      min-height: 42px;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 2px;
+      border-right: 1px solid #edf2ef;
+      padding: 6px 4px;
+      text-align: center;
+    }
+
+    .stat:last-child {
+      border-right: 0;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .stat strong {
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .section {
+      margin-top: 10px;
+    }
+
+    .section-head {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+
+    .section-head h2 {
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .section-head h2::before {
+      content: "";
+      width: 4px;
+      height: 14px;
+      border-radius: 999px;
+      background: var(--green);
+      flex: 0 0 auto;
+    }
+
+    .grid-head,
+    .grid-row {
+      display: grid;
+      grid-template-columns: 104px 118px 74px 96px;
+      justify-content: space-between;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .grid-list {
+      padding: 9px 10px 10px;
+    }
+
+    .grid-head {
+      padding-bottom: 7px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .grid-row {
+      min-height: 42px;
+      padding: 8px 0;
+      border-bottom: 1px solid #edf2ef;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .grid-row:last-child {
+      border-bottom: 0;
+    }
+
+    .grid-row time,
+    .grid-row span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .grid-row time,
+    .grid-row span {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .grid-row strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .grid-head span:nth-child(3),
+    .grid-head span:nth-child(4),
+    .grid-row span:nth-child(3),
+    .grid-row span:nth-child(4) {
+      text-align: right;
+    }
+
+    .empty {
+      padding: 18px 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    @media (min-width: 760px) {
+      .app {
+        padding: 18px;
+      }
+
+      .controls {
+        grid-template-columns: 1.2fr 1fr .9fr;
+        align-items: start;
+      }
+
+      .reset-field {
+        align-self: end;
+      }
+
+      .grid-head,
+      .grid-row {
+        grid-template-columns: 118px 140px 92px 112px;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .grid-list {
+        padding: 12px 18px 16px;
+      }
+    }
+
+    @media (max-width: 759px) {
+      .app {
+        max-width: none;
+        min-height: 100dvh;
+      }
+
+      .topbar {
+        margin: -10px -10px 10px;
+        padding: 12px 12px 10px;
+        border-bottom: 1px solid rgba(13, 129, 91, .12);
+        border-radius: 0 0 16px 16px;
+      }
+
+      .brand-mark {
+        width: 36px;
+        height: 36px;
+      }
+
+      .brand h1 {
+        font-size: 17px;
+      }
+
+      .brand p {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .status {
+        min-height: 30px;
+        padding: 0 9px;
+        font-size: 11px;
+      }
+
+      .panel {
+        border-radius: 14px;
+      }
+
+      .controls {
+        padding: 12px;
+        gap: 12px;
+      }
+
+      .field-title {
+        font-size: 13px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .chips {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        overflow: visible;
+      }
+
+      .chip,
+      .mini-btn,
+      .seg-btn,
+      .action-btn {
+        min-height: 42px;
+        border-radius: 12px;
+        font-size: 13px;
+      }
+
+      .chip {
+        width: 100%;
+        padding: 0 4px;
+      }
+
+      .seg {
+        border-radius: 12px;
+      }
+
+      .dates {
+        gap: 8px;
+      }
+
+      input[type="date"] {
+        min-height: 42px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .interval {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .stats {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .stat {
+        min-height: 54px;
+      }
+
+      .stat span {
+        font-size: 11px;
+      }
+
+      .stat strong {
+        font-size: 16px;
+      }
+
+      .section {
+        margin-top: 12px;
+      }
+
+      .section-head {
+        min-height: 48px;
+        padding: 12px;
+      }
+
+      .section-head h2 {
+        font-size: 15px;
+      }
+
+      .grid-list {
+        padding: 10px;
+      }
+
+      .grid-head,
+      .grid-row {
+        display: grid;
+        grid-template-columns: 86px 96px 58px 82px;
+        justify-content: space-between;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .grid-row {
+        min-height: 0;
+        padding: 10px 0;
+        border-bottom: 1px solid #edf2ef;
+        font-size: 12px;
+      }
+
+      .grid-row:last-child {
+        border-bottom: 0;
+      }
+
+      .grid-row time {
+        color: var(--green-dark);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .grid-row strong {
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .grid-row span:nth-child(3) {
+        color: var(--muted);
+        font-size: 12px;
+        font-family: var(--sans);
+        font-weight: 800;
+        text-align: right;
+      }
+
+      .grid-row span:nth-child(4) {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-align: right;
+      }
+
+      .empty {
+        padding: 28px 8px;
+        font-size: 14px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .brand p {
+        display: none;
+      }
+
+      .chips,
+      .interval {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
 </head>
 <body>
-  <main class="shell">
-    <section class="hero">
-      <div>
-        <p class="eyebrow">Mangsang Alarm Dashboard</p>
-        <h1>망상리조트 취소 감지 대시보드</h1>
-        <p class="sub">콘솔 수집기가 보내는 감지 정보를 서버에 모아 실시간으로 보여줍니다.</p>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">취</div>
+        <div>
+          <h1>취소시설 모니터링</h1>
+          <p>망상리조트 실시간 확인</p>
+        </div>
       </div>
-      <div class="status-pill" id="serverState">확인 중</div>
-    </section>
+      <div class="status">감시 실행 중</div>
+    </header>
 
-    <section class="cards">
-      <article class="card danger">
-        <span>현재 감지</span>
-        <strong id="activeCount">0</strong>
-      </article>
-      <article class="card">
-        <span>누적 감지</span>
-        <strong id="eventCount">0</strong>
-      </article>
-      <article class="card">
-        <span>조회 횟수</span>
-        <strong id="scanCount">0</strong>
-      </article>
-      <article class="card">
-        <span>요청 조합</span>
-        <strong id="requestCount">0</strong>
-      </article>
-    </section>
-
-    <section class="panel meta">
-      <div><span>감시 범위</span><b id="range">-</b></div>
-      <div><span>갱신 주기</span><b id="interval">-</b></div>
-      <div><span>서버 수신</span><b id="lastReportAt">-</b></div>
-      <div><span>최근 갱신</span><b id="lastRefreshAt">-</b></div>
-    </section>
-
-    <section class="toolbar">
-      <input id="filterInput" placeholder="날짜 / 구역 / 객실 / 코드 검색">
-      <button id="refreshBtn">새로고침</button>
-      <button id="resetBtn" class="ghost">기록 리셋</button>
-    </section>
-
-    <section class="panel">
-      <div class="section-title">
-        <h2>🚨 현재 실시간 취소 진행 중</h2>
-        <span id="activeUpdated">-</span>
+    <section class="panel controls" aria-label="감시 조건">
+      <div class="field">
+        <div class="field-title">시설명</div>
+        <div class="row">
+          <button class="mini-btn" type="button" data-facility-action="all">전체선택</button>
+          <button class="mini-btn" type="button" data-facility-action="none">전체해제</button>
+        </div>
+        <div class="chips" aria-label="시설명 필터">
+          <button class="chip active" type="button" aria-pressed="true" data-facility="든바다">든바다</button>
+          <button class="chip active" type="button" aria-pressed="true" data-facility="난바다">난바다</button>
+          <button class="chip active" type="button" aria-pressed="true" data-facility="허허바다">허허바다</button>
+          <button class="chip active" type="button" aria-pressed="true" data-facility="자동차캠핑장">자동차캠핑장</button>
+        </div>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>날짜</th>
-              <th>구역</th>
-              <th>객실</th>
-              <th>시설코드</th>
-              <th>유형코드</th>
-              <th>예약코드</th>
-              <th>감지시각</th>
-            </tr>
-          </thead>
-          <tbody id="activeRows">
-            <tr><td colspan="7" class="empty">현재 감지된 취소분 없음</td></tr>
-          </tbody>
-        </table>
+
+      <div class="field">
+        <div class="field-title">조회 날짜</div>
+        <div class="seg" aria-label="조회 날짜 방식">
+          <button class="seg-btn active" type="button" aria-pressed="true" data-date-mode="open">전체 오픈 날짜</button>
+          <button class="seg-btn" type="button" aria-pressed="false" data-date-mode="custom">날짜 지정</button>
+        </div>
+        <div class="dates">
+          <input id="dateStart" type="date" aria-label="시작일" disabled>
+          <input id="dateEnd" type="date" aria-label="종료일" disabled>
+        </div>
+      </div>
+
+      <div class="field reset-field">
+        <div class="field-title">감시 주기</div>
+        <div class="interval" aria-label="감시 주기">
+          <button class="seg-btn" type="button" data-interval="3">3초</button>
+          <button class="seg-btn active" type="button" data-interval="5">5초</button>
+          <button class="seg-btn" type="button" data-interval="10">10초</button>
+          <button class="seg-btn" type="button" data-interval="30">30초</button>
+        </div>
+        <button class="action-btn" id="resetBtn" type="button">조건 초기화</button>
+      </div>
+
+      <div class="stats" aria-label="상태 신호">
+        <div class="stat"><span>감지</span><strong id="activeCount">0</strong></div>
+        <div class="stat"><span>조회</span><strong id="scanCount">1회</strong></div>
+        <div class="stat"><span>대상</span><strong id="targetCount">0</strong></div>
+        <div class="stat"><span>상태</span><strong id="monitorState" style="color: var(--green)">대기</strong></div>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="section-title">
-        <h2>⏱️ 최초 감지 기록 누적</h2>
-        <span>최신순</span>
+    <section class="panel section">
+      <div class="section-head">
+        <h2>현재 실시간 취소 진행 중인 시설</h2>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>날짜</th>
-              <th>구역</th>
-              <th>객실</th>
-              <th>시설코드</th>
-              <th>유형코드</th>
-              <th>예약코드</th>
-              <th>최초감지</th>
-            </tr>
-          </thead>
-          <tbody id="eventRows">
-            <tr><td colspan="7" class="empty">누적 기록 없음</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <div class="grid-list" id="activeRows"></div>
     </section>
-  </main>
 
-  <script src="/app.js"></script>
+    <section class="panel section">
+      <div class="section-head">
+        <h2>취소 시설별 최초 감지 기록</h2>
+      </div>
+      <div class="grid-list" id="firstRows"></div>
+    </section>
+  </div>
+
+  <script>
+    const CATEGORIES = [
+      { code: "1300", name: "든바다" },
+      { code: "1400", name: "난바다" },
+      { code: "1500", name: "허허바다" },
+      { code: "1600", name: "자동차캠핑장" }
+    ];
+
+    const CONFIG = {
+      eventsUrl: "/api/events",
+      statusUrl: "/api/status",
+      maxDays: 40
+    };
+
+    let rows = [];
+    const firstSeen = new Map();
+    let monitorTimer = null;
+    let isProcessing = false;
+    let lastError = "";
+
+    const maxDays = CONFIG.maxDays;
+    const formatDate = date => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+    const dateFromKey = key => {
+      const [y, m, d] = key.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    };
+    const addDays = (key, days) => {
+      const date = dateFromKey(key);
+      date.setDate(date.getDate() + days);
+      return formatDate(date);
+    };
+
+    const today = formatDate(new Date());
+    const startOpen = addDays(today, 1);
+    const endOpen = addDays(today, maxDays);
+    let mode = "open";
+    let interval = "5";
+    let scanCount = 0;
+    let selected = new Set(["든바다", "난바다", "허허바다", "자동차캠핑장"]);
+
+    const activeRows = document.querySelector("#activeRows");
+    const firstRows = document.querySelector("#firstRows");
+    const dateStart = document.querySelector("#dateStart");
+    const dateEnd = document.querySelector("#dateEnd");
+    const chips = [...document.querySelectorAll(".chip")];
+    const modeButtons = [...document.querySelectorAll("[data-date-mode]")];
+    const intervalButtons = [...document.querySelectorAll("[data-interval]")];
+
+    dateStart.min = startOpen;
+    dateStart.max = endOpen;
+    dateStart.value = startOpen;
+    dateEnd.min = startOpen;
+    dateEnd.max = endOpen;
+    dateEnd.value = endOpen;
+
+    function currentRange() {
+      return {
+        start: mode === "custom" ? dateStart.value : startOpen,
+        end: mode === "custom" ? dateEnd.value : endOpen
+      };
+    }
+
+    function dayCount() {
+      const { start, end } = currentRange();
+      const dayMs = 24 * 60 * 60 * 1000;
+      return Math.max(0, Math.round((dateFromKey(end) - dateFromKey(start)) / dayMs) + 1);
+    }
+
+    function visibleRows(source = rows) {
+      const { start, end } = currentRange();
+      return source.filter(row => selected.has(row.name) && row.date >= start && row.date <= end);
+    }
+
+    function header() {
+      return `
+        <div class="grid-head">
+          <span>이용일</span>
+          <span>이용시설</span>
+          <span>객실</span>
+          <span>감지시간</span>
+        </div>
+      `;
+    }
+
+    function rowMarkup(row) {
+      const shortTime = row.time.replace(/^오전\s*/, "AM ").replace(/^오후\s*/, "PM ");
+      return `
+        <div class="grid-row">
+          <time>${row.date}</time>
+          <strong>${row.name}</strong>
+          <span>${row.room}</span>
+          <span>${shortTime}</span>
+        </div>
+      `;
+    }
+
+    function paintList(target, data, emptyText) {
+      target.innerHTML = data.length
+        ? `${header()}${data.map(rowMarkup).join("")}`
+        : `<div class="empty">${emptyText}</div>`;
+    }
+
+    function keyOf(row) {
+      return `${row.date}|${row.name}|${row.room}|${row.fcltyCode}|${row.fcltyTyCode}|${row.resveNoCode}`;
+    }
+
+    function beep() {
+      try {
+        new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg").play();
+      } catch (e) {}
+    }
+
+    function normalizeFacilityName(value) {
+      const name = String(value || "-");
+      if (name === "자동차") return "자동차캠핑장";
+      return name;
+    }
+
+    function normalizeTime(value) {
+      if (!value) return new Date().toLocaleTimeString();
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleTimeString();
+    }
+
+    function normalizeServerItem(item) {
+      const category = normalizeFacilityName(item.category || item.name);
+      const room = String(item.roomName || item.room || "-").replace(/^자동차캠핑장\s*/, "");
+      return {
+        date: String(item.date || "-"),
+        name: category,
+        room,
+        time: normalizeTime(item.detectedAt || item.time),
+        fcltyCode: String(item.fcltyCode || ""),
+        fcltyTyCode: String(item.fcltyTyCode || ""),
+        resveNoCode: String(item.resveNoCode || "")
+      };
+    }
+
+    async function scanOnce() {
+      if (isProcessing) return;
+      isProcessing = true;
+      scanCount++;
+      lastError = "";
+      document.querySelector("#monitorState").textContent = "조회중";
+      document.querySelector("#monitorState").style.color = "var(--warn)";
+      render();
+
+      try {
+        const res = await fetch(CONFIG.eventsUrl, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = await res.json();
+        const active = Array.isArray(payload.active) ? payload.active.map(normalizeServerItem) : [];
+        const events = Array.isArray(payload.events) ? payload.events.map(normalizeServerItem) : [];
+        const serverMonitor = payload.status?.monitor || {};
+
+        rows = active.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko"));
+
+        events.forEach(row => {
+          const key = keyOf(row);
+          if (!firstSeen.has(key)) {
+            firstSeen.set(key, row);
+          }
+        });
+
+        scanCount = Number(serverMonitor.count || scanCount);
+        document.querySelector("#monitorState").textContent = lastError || "정상";
+        document.querySelector("#monitorState").style.color = lastError ? "var(--warn)" : "var(--green)";
+      } catch (e) {
+        lastError = "서버대기";
+        document.querySelector("#monitorState").textContent = "오류";
+        document.querySelector("#monitorState").style.color = "#d53939";
+      } finally {
+        isProcessing = false;
+        render();
+      }
+    }
+
+    function startMonitor() {
+      if (monitorTimer) clearInterval(monitorTimer);
+      scanOnce();
+      monitorTimer = setInterval(scanOnce, Number(interval) * 1000);
+    }
+
+    function render() {
+      const data = visibleRows();
+      const firstData = visibleRows([...firstSeen.values()].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko")));
+      chips.forEach(chip => {
+        const isActive = selected.has(chip.dataset.facility);
+        chip.classList.toggle("active", isActive);
+        chip.setAttribute("aria-pressed", String(isActive));
+      });
+      modeButtons.forEach(button => {
+        const isActive = button.dataset.dateMode === mode;
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+      });
+      intervalButtons.forEach(button => {
+        const isActive = button.dataset.interval === interval;
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+      });
+      dateStart.disabled = mode !== "custom";
+      dateEnd.disabled = mode !== "custom";
+      paintList(activeRows, data, "현재 대기 중입니다. 취소분이 없습니다.");
+      paintList(firstRows, firstData, "조건에 맞는 최초 감지 기록이 없습니다.");
+      document.querySelector("#activeCount").textContent = data.length;
+      document.querySelector("#scanCount").textContent = `${scanCount}회`;
+      document.querySelector("#targetCount").textContent = selected.size * Math.max(0, dayCount() - 1);
+    }
+
+    document.querySelector("[data-facility-action='all']").addEventListener("click", () => {
+      selected = new Set(["든바다", "난바다", "허허바다", "자동차캠핑장"]);
+      render();
+    });
+
+    document.querySelector("[data-facility-action='none']").addEventListener("click", () => {
+      selected = new Set();
+      render();
+    });
+
+    chips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        const name = chip.dataset.facility;
+        selected.has(name) ? selected.delete(name) : selected.add(name);
+        render();
+      });
+    });
+
+    modeButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        mode = button.dataset.dateMode;
+        render();
+      });
+    });
+
+    [dateStart, dateEnd].forEach(input => {
+      input.addEventListener("focus", () => {
+        mode = "custom";
+        render();
+      });
+      input.addEventListener("change", () => {
+        mode = "custom";
+        if (dateStart.value > dateEnd.value) {
+          input === dateStart ? dateEnd.value = dateStart.value : dateStart.value = dateEnd.value;
+        }
+        render();
+      });
+    });
+
+    intervalButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        interval = button.dataset.interval;
+        if (monitorTimer) startMonitor();
+        render();
+      });
+    });
+
+    document.querySelector("#resetBtn").addEventListener("click", () => {
+      mode = "open";
+      interval = "5";
+      selected = new Set(["든바다", "난바다", "허허바다", "자동차캠핑장"]);
+      dateStart.value = startOpen;
+      dateEnd.value = endOpen;
+      scanCount = 0;
+      rows = [];
+      firstSeen.clear();
+      render();
+      startMonitor();
+    });
+
+    render();
+    startMonitor();
+  </script>
 </body>
 </html>
