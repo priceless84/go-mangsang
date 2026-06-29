@@ -1,4 +1,8 @@
-﻿<!doctype html>
+const selectedNames = selected.size
+        ? selected
+        : new Set(CATEGORIES.map(item => item.name));
+      return source.filter(row => selectedNames.has(normalizeFacilityName(row.name)) && row.date >= start && row.date <= end);const targetFacilityCount = selected.size || CATEGORIES.length;
+      document.querySelector("#targetCount").textContent = targetFacilityCount * Math.max(0, dayCount() - 1);﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
