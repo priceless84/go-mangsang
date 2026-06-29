@@ -141,68 +141,33 @@
 
     .field {
       display: grid;
-      gap: 8px;
-      padding: 9px;
-      border: 1px solid rgba(13, 129, 91, .12);
-      border-radius: 16px;
-      background:
-        linear-gradient(135deg, rgba(13, 129, 91, .055), rgba(255, 255, 255, .72) 62%),
-        rgba(255, 255, 255, .56);
+      gap: 7px;
     }
 
     .field-title {
       display: flex;
       align-items: center;
-      gap: 7px;
-      min-height: 38px;
-      padding: 7px 9px;
-      border: 1px solid rgba(13, 129, 91, .18);
-      border-radius: 14px;
-      background:
-        linear-gradient(135deg, rgba(13, 129, 91, .18), rgba(255, 255, 255, .96) 70%);
+      gap: 8px;
+      min-height: 30px;
       color: #172b22;
       font-size: 15px;
       font-weight: 900;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .72);
-    }
-
-    .field-no {
-      display: inline-grid;
-      place-items: center;
-      width: 25px;
-      height: 25px;
-      border-radius: 999px;
-      background: var(--green);
-      color: #fff;
-      font-size: 11px;
-      letter-spacing: -.02em;
-      flex: 0 0 auto;
     }
 
     .field-icon {
       display: inline-grid;
       place-items: center;
-      width: 25px;
-      height: 25px;
-      border-radius: 9px;
-      background: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      background: rgba(13, 129, 91, .09);
       font-size: 15px;
-      box-shadow: 0 1px 4px rgba(25, 48, 38, .08);
       flex: 0 0 auto;
     }
 
     .field-name {
       flex: 1 1 auto;
       min-width: 0;
-    }
-
-    .field-note {
-      padding: 4px 7px;
-      border-radius: 999px;
-      background: rgba(13, 129, 91, .09);
-      color: var(--green-dark);
-      font-size: 10px;
-      white-space: nowrap;
     }
 
     .row {
@@ -688,10 +653,8 @@
     <section class="panel controls" aria-label="감시 조건">
       <div class="field">
         <div class="field-title">
-          <span class="field-no">01</span>
           <span class="field-icon">🏕️</span>
           <span class="field-name">시설명</span>
-          <span class="field-note">대분류</span>
         </div>
         <div class="seg facility-actions" aria-label="시설명 선택 방식">
           <button class="seg-btn" type="button" data-facility-action="all">전체선택</button>
@@ -707,10 +670,8 @@
 
       <div class="field">
         <div class="field-title">
-          <span class="field-no">02</span>
           <span class="field-icon">📅</span>
           <span class="field-name">조회 날짜</span>
-          <span class="field-note">기간</span>
         </div>
         <div class="seg" aria-label="조회 날짜 방식">
           <button class="seg-btn active" type="button" aria-pressed="true" data-date-mode="open">전체 오픈 날짜</button>
@@ -724,10 +685,8 @@
 
       <div class="field reset-field">
         <div class="field-title">
-          <span class="field-no">03</span>
           <span class="field-icon">⏱️</span>
           <span class="field-name">감시 주기</span>
-          <span class="field-note">속도</span>
         </div>
         <div class="interval" aria-label="감시 주기">
           <button class="seg-btn" type="button" data-interval="3">3초</button>
