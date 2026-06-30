@@ -195,7 +195,8 @@ function normalizeRoomName(site, categoryName) {
 }
 
 function isCanceling(site) {
-  return site && site.canclYn === "N";
+  if (!site || typeof site !== "object") return false;
+  return String(site.canclYn || "").toUpperCase() === "N";
 }
 
 async function fetchFacilityList(category, resveNoCode, beginDate, endDate) {

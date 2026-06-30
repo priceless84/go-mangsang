@@ -1,21 +1,20 @@
-﻿window.stopWatchAll && stopWatchAll();
+window.stopWatchAll && stopWatchAll();
 
 (function () {
     const DASHBOARD_URL = "https://go-mangsang.onrender.com";
 
     const CATEGORIES = [
-        { code: "1300", name: "든바다" },
-        { code: "1400", name: "난바다" },
-        { code: "1500", name: "허허바다" },
-        { code: "1600", name: "자동차" }
+        { code: "1300", name: "든바다", resveNoCodes: ["ME", "MC", "MA", "MG", "MD", "MB"] },
+        { code: "1400", name: "난바다", resveNoCodes: ["MH", "MB", "MD", "MG", "MI"] },
+        { code: "1500", name: "허허바다", resveNoCodes: ["MI", "MF", "MC", "MD", "MB"] },
+        { code: "1600", name: "자동차", resveNoCodes: ["RR"] }
     ];
 
     const CONFIG = {
         url: "/user/reservation/ND_selectChildFcltyList.do",
         trrsrtCode: "1000",
-        resveNoCode: "MA",
         maxDays: 40,
-        intervalSec: 5,
+        intervalSec: 15,
         requestTimeoutMs: 9000,
         concurrency: 12
     };
@@ -63,7 +62,12 @@
         return "";
     }
 
-    function getActualResveNoCode(site, res) {
+    function isCanceling(site) {
+        if (!site || typeof site !== "object") return false;
+        return String(site.canclYn || "").toUpperCase() === "N";
+    }
+
+    function getActualResveNoCode(site, res, fallbackCode) {
         return pickFirstValue(site, [
             "resveNoCode",
             "resveNoCd",
@@ -82,10 +86,10 @@
             "resveCode",
             "resveSeCode",
             "resveClCode"
-        ]) || CONFIG.resveNoCode;
+        ]) || fallbackCode || "-";
     }
 
-    function buildItem(x, cat, checkBeginDe, res) {
+    function buildItem(x, cat, checkBeginDe, res, resveNoCode) {
         return {
             id: `${checkBeginDe}|${cat.code}|${x.fcltyCode || ""}|${x.fcltyNm || ""}`,
             date: checkBeginDe,
@@ -93,7 +97,7 @@
             roomName: x.fcltyNm || "이름없음",
             fcltyCode: x.fcltyCode || "-",
             fcltyTyCode: x.fcltyTyCode || "-",
-            resveNoCode: String(getActualResveNoCode(x, res) || "-"),
+            resveNoCode: String(getActualResveNoCode(x, res, resveNoCode) || "-"),
             detectedAt: new Date().toISOString()
         };
     }
@@ -123,6 +127,8 @@
 -------------------------------------------------------------
 [1] 🚨 현재 실시간 취소 진행 중인 시설
 ${activeCancels.length ? activeCancels.join("\n") : "• 현재 대기 중... (취소분 없음)"}
+
+조회방식 : 객실타입별 예약코드 전체 조회
 
 [2] ⏱️ 취소 시설별 최초 감지 기록 누적
 ${Object.keys(cancelDetectedTimes).length
@@ -232,37 +238,39 @@ ${Object.keys(cancelDetectedTimes).length
             const checkEndDe = getFormattedDate(day + 1);
 
             CATEGORIES.forEach(cat => {
-                tasks.push(async () => {
-                    const result = await ajaxWithTimeout({
-                        url: CONFIG.url,
-                        type: "POST",
-                        dataType: "json",
-                        cache: false,
-                        data: {
-                            trrsrtCode: CONFIG.trrsrtCode,
-                            fcltyCode: cat.code,
-                            resveNoCode: CONFIG.resveNoCode,
-                            resveBeginDe: checkBeginDe,
-                            resveEndDe: checkEndDe
-                        }
-                    }, CONFIG.requestTimeoutMs);
-
-                    completedRequests++;
-
-                    const list = result.res?.value?.childFcltyList;
-                    if (!Array.isArray(list)) return;
-
-                    list.forEach(x => {
-                        if (x && x.canclYn === "N") {
-                            const item = buildItem(x, cat, checkBeginDe, result.res);
-                            activeItems.push(item);
-
-                            const logKey = itemToLogLine(item);
-                            if (!cancelDetectedTimes[logKey]) {
-                                cancelDetectedTimes[logKey] = nowText();
-                                beep();
+                (cat.resveNoCodes || []).forEach(resveNoCode => {
+                    tasks.push(async () => {
+                        const result = await ajaxWithTimeout({
+                            url: CONFIG.url,
+                            type: "POST",
+                            dataType: "json",
+                            cache: false,
+                            data: {
+                                trrsrtCode: CONFIG.trrsrtCode,
+                                fcltyCode: cat.code,
+                                resveNoCode,
+                                resveBeginDe: checkBeginDe,
+                                resveEndDe: checkEndDe
                             }
-                        }
+                        }, CONFIG.requestTimeoutMs);
+
+                        completedRequests++;
+
+                        const list = result.res?.value?.childFcltyList;
+                        if (!Array.isArray(list)) return;
+
+                        list.forEach(x => {
+                            if (isCanceling(x)) {
+                                const item = buildItem(x, cat, checkBeginDe, result.res, resveNoCode);
+                                activeItems.push(item);
+
+                                const logKey = itemToLogLine(item);
+                                if (!cancelDetectedTimes[logKey]) {
+                                    cancelDetectedTimes[logKey] = nowText();
+                                    beep();
+                                }
+                            }
+                        });
                     });
                 });
             });
