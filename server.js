@@ -19,10 +19,10 @@ const MONITOR_MAX_DAYS = Math.max(2, Number(process.env.MONITOR_MAX_DAYS || 40))
 const CAMPING_ENDPOINT = "https://www.campingkorea.or.kr/user/reservation/ND_selectChildFcltyList.do";
 
 const CATEGORIES = [
-  { code: "1300", name: "든바다" },
-  { code: "1400", name: "난바다" },
-  { code: "1500", name: "허허바다" },
-  { code: "1600", name: "자동차" }
+  { code: "1300", name: "든바다", resveNoCodes: ["ME", "MC", "MA", "MG", "MD", "MB"] },
+  { code: "1400", name: "난바다", resveNoCodes: ["MH", "MB", "MD", "MG", "MI"] },
+  { code: "1500", name: "허허바다", resveNoCodes: ["MI", "MF", "MC", "MD", "MB"] },
+  { code: "1600", name: "자동차", resveNoCodes: ["RR"] }
 ];
 
 const state = {
@@ -196,11 +196,11 @@ function isCanceling(site) {
   return site && site.canclYn === "N";
 }
 
-async function fetchFacilityList(category, beginDate, endDate) {
+async function fetchFacilityList(category, resveNoCode, beginDate, endDate) {
   const body = new URLSearchParams({
     trrsrtCode: "1000",
     fcltyCode: category.code,
-    resveNoCode: "MA",
+    resveNoCode,
     resveBeginDe: beginDate,
     resveEndDe: endDate
   });
@@ -237,7 +237,9 @@ async function runServerMonitorOnce() {
     const beginDate = dateByOffset(day);
     const endDate = dateByOffset(day + 1);
     CATEGORIES.forEach(category => {
-      jobs.push({ category, beginDate, endDate });
+      category.resveNoCodes.forEach(resveNoCode => {
+        jobs.push({ category, resveNoCode, beginDate, endDate });
+      });
     });
   }
 
@@ -249,7 +251,7 @@ async function runServerMonitorOnce() {
 
   try {
     const results = await Promise.allSettled(jobs.map(async job => {
-      const res = await fetchFacilityList(job.category, job.beginDate, job.endDate);
+      const res = await fetchFacilityList(job.category, job.resveNoCode, job.beginDate, job.endDate);
       const list = res?.value?.childFcltyList;
       if (!Array.isArray(list)) return;
 
@@ -263,7 +265,7 @@ async function runServerMonitorOnce() {
           roomName: normalizeRoomName(site, categoryName),
           fcltyCode: site.fcltyCode,
           fcltyTyCode: site.fcltyTyCode,
-          resveNoCode: site.resveNoCode || "MA",
+          resveNoCode: site.resveNoCode || job.resveNoCode,
           detectedAt: new Date().toISOString()
         });
 
