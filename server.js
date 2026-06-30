@@ -14,8 +14,10 @@ const DATA_FILE = path.join(DATA_DIR, "events.json");
 const MAX_EVENTS = 1000;
 
 const MONITOR_ENABLED = String(process.env.MONITOR_ENABLED || "true") !== "false";
-const MONITOR_INTERVAL_SEC = Math.max(5, Number(process.env.MONITOR_INTERVAL_SEC || 10));
+const MONITOR_INTERVAL_SEC = Math.max(10, Number(process.env.MONITOR_INTERVAL_SEC || 30));
 const MONITOR_MAX_DAYS = Math.max(2, Number(process.env.MONITOR_MAX_DAYS || 40));
+const MONITOR_CONCURRENCY = Math.max(1, Number(process.env.MONITOR_CONCURRENCY || 10));
+const MONITOR_REQUEST_TIMEOUT_MS = Math.max(3000, Number(process.env.MONITOR_REQUEST_TIMEOUT_MS || 12000));
 const CAMPING_ENDPOINT = "https://www.campingkorea.or.kr/user/reservation/ND_selectChildFcltyList.do";
 
 const CATEGORIES = [
@@ -197,6 +199,8 @@ function isCanceling(site) {
 }
 
 async function fetchFacilityList(category, resveNoCode, beginDate, endDate) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), MONITOR_REQUEST_TIMEOUT_MS);
   const body = new URLSearchParams({
     trrsrtCode: "1000",
     fcltyCode: category.code,
@@ -205,24 +209,29 @@ async function fetchFacilityList(category, resveNoCode, beginDate, endDate) {
     resveEndDe: endDate
   });
 
-  const response = await fetch(CAMPING_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "Accept": "application/json, text/javascript, */*; q=0.01",
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari",
-      "X-Requested-With": "XMLHttpRequest",
-      "Referer": "https://www.campingkorea.or.kr/user/reservation/BD_reservationReq.do"
-    },
-    body
-  });
-
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const text = await response.text();
   try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`JSON 파싱 실패: ${text.slice(0, 80)}`);
+    const response = await fetch(CAMPING_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "https://www.campingkorea.or.kr/user/reservation/BD_reservationReq.do"
+      },
+      body,
+      signal: controller.signal
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`JSON 파싱 실패: ${text.slice(0, 80)}`);
+    }
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -250,28 +259,33 @@ async function runServerMonitorOnce() {
   state.monitor.source = "server";
 
   try {
-    const results = await Promise.allSettled(jobs.map(async job => {
-      const res = await fetchFacilityList(job.category, job.resveNoCode, job.beginDate, job.endDate);
-      const list = res?.value?.childFcltyList;
-      if (!Array.isArray(list)) return;
+    const results = [];
+    for (let i = 0; i < jobs.length; i += MONITOR_CONCURRENCY) {
+      const batch = jobs.slice(i, i + MONITOR_CONCURRENCY);
+      const batchResults = await Promise.allSettled(batch.map(async job => {
+        const res = await fetchFacilityList(job.category, job.resveNoCode, job.beginDate, job.endDate);
+        const list = res?.value?.childFcltyList;
+        if (!Array.isArray(list)) return;
 
-      list.forEach(site => {
-        if (!isCanceling(site)) return;
+        list.forEach(site => {
+          if (!isCanceling(site)) return;
 
-        const categoryName = normalizeCategoryName(job.category.name);
-        const item = normalizeItem({
-          date: job.beginDate,
-          category: categoryName,
-          roomName: normalizeRoomName(site, categoryName),
-          fcltyCode: site.fcltyCode,
-          fcltyTyCode: site.fcltyTyCode,
-          resveNoCode: site.resveNoCode || job.resveNoCode,
-          detectedAt: new Date().toISOString()
+          const categoryName = normalizeCategoryName(job.category.name);
+          const item = normalizeItem({
+            date: job.beginDate,
+            category: categoryName,
+            roomName: normalizeRoomName(site, categoryName),
+            fcltyCode: site.fcltyCode,
+            fcltyTyCode: site.fcltyTyCode,
+            resveNoCode: site.resveNoCode || job.resveNoCode,
+            detectedAt: new Date().toISOString()
+          });
+
+          active.push(item);
         });
-
-        active.push(item);
-      });
-    }));
+      }));
+      results.push(...batchResults);
+    }
 
     const failures = results.filter(result => result.status === "rejected");
     monitorError = failures.length ? `${failures.length}개 조회 실패` : "";
