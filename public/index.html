@@ -364,6 +364,23 @@
       background: #eef8f3;
     }
 
+    .sync-status {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #f8fcfa;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.45;
+    }
+
+    .sync-status strong {
+      color: var(--green-dark);
+      font-size: 13px;
+    }
+
     .stat {
       min-width: 0;
       min-height: 42px;
@@ -801,6 +818,9 @@
         <button class="mobile-reset-btn" id="monitorResetBtn" type="button">감시초기화</button>
         <button class="mobile-reset-btn" id="historyResetBtn" type="button">이력초기화</button>
       </div>
+      <div class="sync-status" id="syncStatus">
+        NAS 수신 확인 중 · 원본 현재 0건 / 이력 0건
+      </div>
     </section>
 
     <section class="panel section">
@@ -840,6 +860,13 @@
     let monitorTimer = null;
     let isProcessing = false;
     let lastError = "";
+    let serverInfo = {
+      activeRaw: 0,
+      eventsRaw: 0,
+      lastReportAt: "-",
+      source: "-",
+      totalRequests: 0
+    };
 
     const maxDays = CONFIG.maxDays;
     const formatDate = date => {
@@ -1018,6 +1045,13 @@
         const active = Array.isArray(payload.active) ? payload.active.map(normalizeServerItem) : [];
         const events = Array.isArray(payload.events) ? payload.events.map(normalizeServerItem) : [];
         const serverMonitor = payload.status?.monitor || {};
+        serverInfo = {
+          activeRaw: Array.isArray(payload.active) ? payload.active.length : 0,
+          eventsRaw: Array.isArray(payload.events) ? payload.events.length : 0,
+          lastReportAt: payload.status?.lastReportAt || "-",
+          source: serverMonitor.source || "-",
+          totalRequests: Number(serverMonitor.totalRequests || 0)
+        };
 
         rows = active.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko"));
 
@@ -1079,6 +1113,13 @@
       document.querySelector("#scanCount").textContent = `${Math.max(0, scanCount - scanBase)}회`;
       const targetFacilityCount = selected.size || CATEGORIES.length;
       document.querySelector("#targetCount").textContent = targetFacilityCount * Math.max(0, dayCount() - 1);
+      const sync = document.querySelector("#syncStatus");
+      if (sync) {
+        const last = serverInfo.lastReportAt === "-"
+          ? "-"
+          : new Date(serverInfo.lastReportAt).toLocaleTimeString("ko-KR");
+        sync.innerHTML = `NAS 마지막 수신 <strong>${last}</strong> · 원본 현재 <strong>${serverInfo.activeRaw}건</strong> / 이력 <strong>${serverInfo.eventsRaw}건</strong> · 출처 ${serverInfo.source} · 요청 ${serverInfo.totalRequests}`;
+      }
     }
 
     document.querySelector("[data-facility-action='all']").addEventListener("click", () => {
