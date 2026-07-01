@@ -13,7 +13,9 @@ const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "events.json");
 const MAX_EVENTS = 1000;
 
-const MONITOR_ENABLED = String(process.env.MONITOR_ENABLED || "true") !== "false";
+// NAS가 24시간 감시하고, Render는 NAS가 보낸 결과를 보여주는 역할만 합니다.
+// 기본값을 OFF로 둬서 Render 자체 감시 실패가 NAS 데이터를 덮어쓰지 않게 합니다.
+const MONITOR_ENABLED = String(process.env.MONITOR_ENABLED || "false") === "true";
 const MONITOR_INTERVAL_SEC = Math.max(10, Number(process.env.MONITOR_INTERVAL_SEC || 30));
 const MONITOR_MAX_DAYS = Math.max(2, Number(process.env.MONITOR_MAX_DAYS || 40));
 const MONITOR_CONCURRENCY = Math.max(1, Number(process.env.MONITOR_CONCURRENCY || 10));
@@ -195,8 +197,7 @@ function normalizeRoomName(site, categoryName) {
 }
 
 function isCanceling(site) {
-  if (!site || typeof site !== "object") return false;
-  return String(site.canclYn || "").toUpperCase() === "N";
+  return site && site.canclYn === "N";
 }
 
 async function fetchFacilityList(category, resveNoCode, beginDate, endDate) {
@@ -290,6 +291,13 @@ async function runServerMonitorOnce() {
 
     const failures = results.filter(result => result.status === "rejected");
     monitorError = failures.length ? `${failures.length}개 조회 실패` : "";
+
+    // 서버 자체 감시가 실패해서 0건이 나와도 NAS가 보낸 현재 목록은 유지합니다.
+    if (failures.length && active.length === 0 && (state.monitor.source === "nas" || state.monitor.source === "console")) {
+      state.monitor.lastError = monitorError;
+      return;
+    }
+
     state.previousRefreshAt = state.lastRefreshAt;
     state.lastRefreshAt = new Date().toISOString();
     state.lastReportAt = state.lastRefreshAt;
@@ -357,9 +365,10 @@ const server = http.createServer(async (req, res) => {
         totalRequests: Number(payload.totalRequests || 0),
         activeCount: active.length,
         range: String(payload.range || "-"),
-        intervalSec: payload.intervalSec ?? null,
-        source: "console"
+        intervalSec: payload.intervalSec ?? 10,
+        source: "nas"
       };
+      monitorError = "";
       upsertEvents(active);
       sendJson(res, 200, { ok: true, activeCount: active.length, eventCount: state.events.length });
       return;
