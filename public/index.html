@@ -339,6 +339,31 @@
       background: #fbfdfb;
     }
 
+    .mobile-reset-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    .mobile-reset-btn {
+      min-height: 43px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      color: var(--green-dark);
+      font-size: 15px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .mobile-reset-btn:active {
+      transform: translateY(1px);
+      background: #eef8f3;
+    }
+
     .stat {
       min-width: 0;
       min-height: 42px;
@@ -699,6 +724,10 @@
       .stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+
+      .mobile-reset-actions {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -768,6 +797,10 @@
         <div class="stat"><span>대상</span><strong id="targetCount">0</strong></div>
         <div class="stat"><span>상태</span><strong id="monitorState" style="color: var(--green)">대기</strong></div>
       </div>
+      <div class="mobile-reset-actions" aria-label="모바일 표시 초기화">
+        <button class="mobile-reset-btn" id="monitorResetBtn" type="button">감시초기화</button>
+        <button class="mobile-reset-btn" id="historyResetBtn" type="button">이력초기화</button>
+      </div>
     </section>
 
     <section class="panel section">
@@ -831,6 +864,9 @@
     let mode = "open";
     let interval = "10";
     let scanCount = 0;
+    let scanBase = Number(localStorage.getItem("mangsangScanBase") || 0);
+    let activeResetAt = Number(localStorage.getItem("mangsangActiveResetAt") || 0);
+    let historyResetAt = Number(localStorage.getItem("mangsangHistoryResetAt") || 0);
     let selected = new Set(["든바다", "난바다", "허허바다", "자동차캠핑장"]);
 
     const activeRows = document.querySelector("#activeRows");
@@ -923,6 +959,12 @@
       return date.toLocaleTimeString();
     }
 
+    function timestampOf(value) {
+      if (!value) return Date.now();
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+    }
+
     async function refreshOnlineCount() {
       if (!onlineStatus) return;
       try {
@@ -942,11 +984,13 @@
     function normalizeServerItem(item) {
       const category = normalizeFacilityName(item.category || item.name);
       const room = String(item.roomName || item.room || "-").replace(/^자동차캠핑장\s*/, "");
+      const detectedAt = item.detectedAt || item.time || "";
       return {
         date: String(item.date || "-"),
         name: category,
         room,
-        time: normalizeTime(item.detectedAt || item.time),
+        time: normalizeTime(detectedAt),
+        detectedMs: timestampOf(detectedAt),
         fcltyCode: String(item.fcltyCode || ""),
         fcltyTyCode: String(item.fcltyTyCode || ""),
         resveNoCode: String(item.resveNoCode || "")
@@ -970,9 +1014,12 @@
         const events = Array.isArray(payload.events) ? payload.events.map(normalizeServerItem) : [];
         const serverMonitor = payload.status?.monitor || {};
 
-        rows = active.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko"));
+        rows = active
+          .filter(row => !activeResetAt || row.detectedMs > activeResetAt)
+          .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko"));
 
         events.forEach(row => {
+          if (historyResetAt && row.detectedMs <= historyResetAt) return;
           const key = keyOf(row);
           if (!firstSeen.has(key)) {
             firstSeen.set(key, row);
@@ -1023,7 +1070,7 @@
       paintList(activeRows, data, "현재 대기 중입니다. 취소분이 없습니다.");
       paintList(firstRows, firstData, "조건에 맞는 최초 감지 기록이 없습니다.");
       document.querySelector("#activeCount").textContent = data.length;
-      document.querySelector("#scanCount").textContent = `${scanCount}회`;
+      document.querySelector("#scanCount").textContent = `${Math.max(0, scanCount - scanBase)}회`;
       const targetFacilityCount = selected.size || CATEGORIES.length;
       document.querySelector("#targetCount").textContent = targetFacilityCount * Math.max(0, dayCount() - 1);
     }
@@ -1073,6 +1120,22 @@
         if (monitorTimer) startMonitor();
         render();
       });
+    });
+
+    document.querySelector("#monitorResetBtn").addEventListener("click", () => {
+      scanBase = scanCount;
+      activeResetAt = Date.now();
+      rows = [];
+      localStorage.setItem("mangsangScanBase", String(scanBase));
+      localStorage.setItem("mangsangActiveResetAt", String(activeResetAt));
+      render();
+    });
+
+    document.querySelector("#historyResetBtn").addEventListener("click", () => {
+      historyResetAt = Date.now();
+      firstSeen.clear();
+      localStorage.setItem("mangsangHistoryResetAt", String(historyResetAt));
+      render();
     });
 
     render();
