@@ -128,6 +128,16 @@ function upsertEvents(items) {
   saveEvents();
 }
 
+function fallbackActiveFromEvents() {
+  const map = new Map();
+  state.events.slice().reverse().forEach(item => {
+    if (!map.has(item.id)) map.set(item.id, item);
+  });
+  return Array.from(map.values())
+    .sort((a, b) => a.date.localeCompare(b.date) || a.category.localeCompare(b.category, "ko"))
+    .slice(0, 80);
+}
+
 function contentTypeFor(filePath) {
   const ext = path.extname(filePath).toLowerCase();
   return {
@@ -337,9 +347,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/events") {
+      const activeForView = state.active.length ? state.active : fallbackActiveFromEvents();
       sendJson(res, 200, {
         ok: true,
-        active: state.active,
+        active: activeForView,
         events: state.events.slice().reverse(),
         status: {
           startedAt: state.startedAt,
@@ -360,18 +371,20 @@ const server = http.createServer(async (req, res) => {
       state.previousRefreshAt = state.lastRefreshAt;
       state.lastRefreshAt = payload.refreshedAt || now;
       state.lastReportAt = now;
-      state.active = active;
+      if (active.length > 0 || state.active.length === 0) {
+        state.active = active;
+      }
       state.monitor = {
         count: Number(payload.count || 0),
         totalRequests: Number(payload.totalRequests || 0),
-        activeCount: active.length,
+        activeCount: state.active.length || active.length,
         range: String(payload.range || "-"),
         intervalSec: payload.intervalSec ?? 10,
         source: "nas"
       };
       monitorError = "";
-      upsertEvents(active);
-      sendJson(res, 200, { ok: true, activeCount: active.length, eventCount: state.events.length });
+      if (active.length > 0) upsertEvents(active);
+      sendJson(res, 200, { ok: true, activeCount: state.active.length, eventCount: state.events.length });
       return;
     }
 
