@@ -355,7 +355,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/report") {
       const payload = JSON.parse(await readBody(req) || "{}");
       const now = new Date().toISOString();
-      const active = Array.isArray(payload.active) ? payload.active.map(normalizeItem) : [];
+      const rawActive = Array.isArray(payload.active) ? payload.active.map(normalizeItem) : [];
+      const active = Array.from(new Map(rawActive.map(item => [item.id, item])).values());
       state.previousRefreshAt = state.lastRefreshAt;
       state.lastRefreshAt = payload.refreshedAt || now;
       state.lastReportAt = now;
