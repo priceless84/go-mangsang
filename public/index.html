@@ -865,7 +865,6 @@
     let interval = "10";
     let scanCount = 0;
     let scanBase = Number(localStorage.getItem("mangsangScanBase") || 0);
-    let activeResetAt = Number(localStorage.getItem("mangsangActiveResetAt") || 0);
     let historyResetAt = Number(localStorage.getItem("mangsangHistoryResetAt") || 0);
     let selected = new Set(["든바다", "난바다", "허허바다", "자동차캠핑장"]);
 
@@ -1014,9 +1013,7 @@
         const events = Array.isArray(payload.events) ? payload.events.map(normalizeServerItem) : [];
         const serverMonitor = payload.status?.monitor || {};
 
-        rows = active
-          .filter(row => !activeResetAt || row.detectedMs > activeResetAt)
-          .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko"));
+        rows = active.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko"));
 
         events.forEach(row => {
           if (historyResetAt && row.detectedMs <= historyResetAt) return;
@@ -1124,10 +1121,7 @@
 
     document.querySelector("#monitorResetBtn").addEventListener("click", () => {
       scanBase = scanCount;
-      activeResetAt = Date.now();
-      rows = [];
       localStorage.setItem("mangsangScanBase", String(scanBase));
-      localStorage.setItem("mangsangActiveResetAt", String(activeResetAt));
       render();
     });
 
