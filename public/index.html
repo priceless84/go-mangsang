@@ -863,9 +863,11 @@
     const endOpen = addDays(today, maxDays);
     let mode = "open";
     let interval = "10";
+    localStorage.removeItem("mangsangActiveResetAt");
+    localStorage.removeItem("mangsangHistoryResetAt");
     let scanCount = 0;
     let scanBase = Number(localStorage.getItem("mangsangScanBase") || 0);
-    let historyResetAt = Number(localStorage.getItem("mangsangHistoryResetAt") || 0);
+    let historyResetAt = 0;
     let selected = new Set(["든바다", "난바다", "허허바다", "자동차캠핑장"]);
 
     const activeRows = document.querySelector("#activeRows");
@@ -1128,7 +1130,6 @@
     document.querySelector("#historyResetBtn").addEventListener("click", () => {
       historyResetAt = Date.now();
       firstSeen.clear();
-      localStorage.setItem("mangsangHistoryResetAt", String(historyResetAt));
       render();
     });
 
