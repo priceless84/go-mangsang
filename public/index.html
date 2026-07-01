@@ -900,12 +900,16 @@
       return Math.max(0, Math.round((dateFromKey(end) - dateFromKey(start)) / dayMs) + 1);
     }
 
-    function visibleRows(source = rows) {
+    function visibleRows(source = rows, options = {}) {
       const { start, end } = currentRange();
       const selectedNames = selected.size
         ? selected
         : new Set(CATEGORIES.map(item => item.name));
-      return source.filter(row => selectedNames.has(normalizeFacilityName(row.name)) && row.date >= start && row.date <= end);
+      return source.filter(row => {
+        const facilityOk = selectedNames.has(normalizeFacilityName(row.name));
+        const dateOk = options.ignoreDate || mode !== "custom" || (row.date >= start && row.date <= end);
+        return facilityOk && dateOk;
+      });
     }
 
     function header() {
@@ -1045,8 +1049,11 @@
     }
 
     function render() {
-      const data = visibleRows();
-      const firstData = visibleRows([...firstSeen.values()].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko")));
+      const data = visibleRows(rows, { ignoreDate: true });
+      const firstData = visibleRows(
+        [...firstSeen.values()].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko")),
+        { ignoreDate: true }
+      );
       chips.forEach(chip => {
         const isActive = selected.has(chip.dataset.facility);
         chip.classList.toggle("active", isActive);
