@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -122,6 +122,24 @@
       border-radius: 50%;
       background: #21bf7b;
       box-shadow: 0 0 0 5px rgba(33, 191, 123, .16);
+    }
+
+    .top-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+
+    .online-status {
+      border-color: #d6e0dc;
+      background: #ffffff;
+      color: #273b31;
+    }
+
+    .online-status::before {
+      background: #70a7ff;
+      box-shadow: 0 0 0 5px rgba(112, 167, 255, .15);
     }
 
     .panel {
@@ -287,6 +305,26 @@
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 5px;
+    }
+
+    .fixed-interval {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #f7fbf9;
+      padding: 12px 14px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .fixed-interval strong {
+      color: var(--green);
+      font-size: 18px;
+      font-weight: 950;
     }
 
     .action-btn {
@@ -674,7 +712,10 @@
           <p>망상리조트 실시간 확인</p>
         </div>
       </div>
-      <div class="status">감시 실행 중</div>
+      <div class="top-actions" aria-label="대시보드 상태">
+        <div class="status">감시 실행 중</div>
+        <div class="status online-status" id="onlineStatus">접속 -명</div>
+      </div>
     </header>
 
     <section class="panel controls" aria-label="감시 조건">
@@ -710,18 +751,15 @@
         </div>
       </div>
 
-      <div class="field reset-field">
+      <div class="field">
         <div class="field-title">
           <span class="field-icon">⏱️</span>
           <span class="field-name">감시 주기</span>
         </div>
-        <div class="interval" aria-label="감시 주기">
-          <button class="seg-btn" type="button" data-interval="3">3초</button>
-          <button class="seg-btn active" type="button" data-interval="5">5초</button>
-          <button class="seg-btn" type="button" data-interval="10">10초</button>
-          <button class="seg-btn" type="button" data-interval="30">30초</button>
+        <div class="fixed-interval" aria-label="NAS 감시 주기">
+          <span>NAS에서 24시간 감시 중</span>
+          <strong>10초</strong>
         </div>
-        <button class="action-btn" id="resetBtn" type="button">조건 초기화</button>
       </div>
 
       <div class="stats" aria-label="상태 신호">
@@ -791,7 +829,7 @@
     const startOpen = addDays(today, 1);
     const endOpen = addDays(today, maxDays);
     let mode = "open";
-    let interval = "5";
+    let interval = "10";
     let scanCount = 0;
     let selected = new Set(["든바다", "난바다", "허허바다", "자동차캠핑장"]);
 
@@ -803,6 +841,7 @@
     const facilityActionButtons = [...document.querySelectorAll("[data-facility-action]")];
     const modeButtons = [...document.querySelectorAll("[data-date-mode]")];
     const intervalButtons = [...document.querySelectorAll("[data-interval]")];
+    const onlineStatus = document.querySelector("#onlineStatus");
 
     dateStart.min = startOpen;
     dateStart.max = endOpen;
@@ -826,7 +865,10 @@
 
     function visibleRows(source = rows) {
       const { start, end } = currentRange();
-      return source.filter(row => selected.has(row.name) && row.date >= start && row.date <= end);
+      const selectedNames = selected.size
+        ? selected
+        : new Set(CATEGORIES.map(item => item.name));
+      return source.filter(row => selectedNames.has(normalizeFacilityName(row.name)) && row.date >= start && row.date <= end);
     }
 
     function header() {
@@ -879,6 +921,22 @@
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return String(value);
       return date.toLocaleTimeString();
+    }
+
+    async function refreshOnlineCount() {
+      if (!onlineStatus) return;
+      try {
+        const res = await fetch("/api/presence", { method: "POST", cache: "no-store" });
+        if (res.status === 401) {
+          location.href = "/login";
+          return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = await res.json();
+        onlineStatus.textContent = `접속 ${payload.online ?? "-"}명`;
+      } catch {
+        onlineStatus.textContent = "접속 확인중";
+      }
     }
 
     function normalizeServerItem(item) {
@@ -960,18 +1018,14 @@
         button.classList.toggle("active", isActive);
         button.setAttribute("aria-pressed", String(isActive));
       });
-      intervalButtons.forEach(button => {
-        const isActive = button.dataset.interval === interval;
-        button.classList.toggle("active", isActive);
-        button.setAttribute("aria-pressed", String(isActive));
-      });
       dateStart.disabled = mode !== "custom";
       dateEnd.disabled = mode !== "custom";
       paintList(activeRows, data, "현재 대기 중입니다. 취소분이 없습니다.");
       paintList(firstRows, firstData, "조건에 맞는 최초 감지 기록이 없습니다.");
       document.querySelector("#activeCount").textContent = data.length;
       document.querySelector("#scanCount").textContent = `${scanCount}회`;
-      document.querySelector("#targetCount").textContent = selected.size * Math.max(0, dayCount() - 1);
+      const targetFacilityCount = selected.size || CATEGORIES.length;
+      document.querySelector("#targetCount").textContent = targetFacilityCount * Math.max(0, dayCount() - 1);
     }
 
     document.querySelector("[data-facility-action='all']").addEventListener("click", () => {
@@ -1021,21 +1075,10 @@
       });
     });
 
-    document.querySelector("#resetBtn").addEventListener("click", () => {
-      mode = "open";
-      interval = "5";
-      selected = new Set(["든바다", "난바다", "허허바다", "자동차캠핑장"]);
-      dateStart.value = startOpen;
-      dateEnd.value = endOpen;
-      scanCount = 0;
-      rows = [];
-      firstSeen.clear();
-      render();
-      startMonitor();
-    });
-
     render();
     startMonitor();
+    refreshOnlineCount();
+    setInterval(refreshOnlineCount, 15000);
   </script>
 </body>
 </html>
