@@ -1055,6 +1055,7 @@
         const active = Array.isArray(payload.active) ? payload.active.map(normalizeServerItem) : [];
         const events = Array.isArray(payload.events) ? payload.events.map(normalizeServerItem) : [];
         const serverMonitor = payload.status?.monitor || {};
+        lastError = String(payload.monitorError || "").trim();
         const serverInterval = Number(payload.config?.intervalSec || serverMonitor.intervalSec || interval);
         if ([10, 30, 60, 300].includes(serverInterval)) interval = String(serverInterval);
 
@@ -1069,8 +1070,8 @@
         });
 
         scanCount = Number(serverMonitor.count || scanCount);
-        document.querySelector("#monitorState").textContent = lastError || "정상";
-        document.querySelector("#monitorState").style.color = lastError ? "var(--warn)" : "var(--green)";
+        document.querySelector("#monitorState").textContent = lastError ? "오류" : "정상";
+        document.querySelector("#monitorState").style.color = lastError ? "#d53939" : "var(--green)";
       } catch (e) {
         lastError = "서버대기";
         document.querySelector("#monitorState").textContent = "오류";
