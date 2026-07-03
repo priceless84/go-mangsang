@@ -12,25 +12,34 @@ const PUBLIC_DIR = fs.existsSync(path.join(__dirname, "public"))
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "events.json");
 const MAX_EVENTS = 2000;
+const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || "6185";
 
 const state = {
   startedAt: new Date().toISOString(),
   lastReportAt: null,
   lastRefreshAt: null,
   previousRefreshAt: null,
+  config: {
+    intervalSec: 60
+  },
   monitor: {
     count: 0,
     totalRequests: 0,
     activeCount: 0,
     range: "-",
-    intervalSec: 10,
-    source: "nas"
+    intervalSec: 60,
+    source: "pc-local"
   },
   active: [],
   events: []
 };
 
 let monitorError = "";
+
+function normalizeIntervalSec(value) {
+  const sec = Number(value);
+  return [10, 30, 60, 300].includes(sec) ? sec : 60;
+}
 
 function ensureDataFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -120,6 +129,7 @@ function normalizeItem(item) {
     fcltyCode: String(item.fcltyCode || ""),
     fcltyTyCode: String(item.fcltyTyCode || ""),
     resveNoCode: String(item.resveNoCode || ""),
+    status: String(item.status || item.state || ""),
     detectedAt: item.detectedAt || item.time || new Date().toISOString()
   };
 }
@@ -207,6 +217,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         active: activeForView(),
         events: state.events.slice().reverse(),
+        config: state.config,
         status: {
           startedAt: state.startedAt,
           lastReportAt: state.lastReportAt,
@@ -215,6 +226,23 @@ const server = http.createServer(async (req, res) => {
           monitor: state.monitor
         }
       });
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/config") {
+      sendJson(res, 200, { ok: true, config: state.config });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/config") {
+      const payload = JSON.parse((await readBody(req)) || "{}");
+      if (String(payload.password || "") !== CONFIG_PASSWORD) {
+        sendJson(res, 403, { ok: false, error: "bad password" });
+        return;
+      }
+      state.config.intervalSec = normalizeIntervalSec(payload.intervalSec);
+      state.monitor.intervalSec = state.config.intervalSec;
+      sendJson(res, 200, { ok: true, config: state.config });
       return;
     }
 
@@ -233,8 +261,8 @@ const server = http.createServer(async (req, res) => {
         totalRequests: Number(payload.totalRequests || 0),
         activeCount: active.length,
         range: String(payload.range || "-"),
-        intervalSec: Number(payload.intervalSec || 10),
-        source: "nas",
+        intervalSec: Number(payload.intervalSec || state.config.intervalSec),
+        source: String(payload.source || "pc-local"),
         failures: Number(payload.failures || 0)
       };
       monitorError = "";
