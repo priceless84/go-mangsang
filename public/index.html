@@ -1118,8 +1118,8 @@
       });
       dateStart.disabled = mode !== "custom";
       dateEnd.disabled = mode !== "custom";
-      paintList(activeRows, data, "현재 대기 중입니다. 취소분이 없습니다.");
-      paintList(firstRows, firstData, "조건에 맞는 최초 감지 기록이 없습니다.");
+      paintList(activeRows, data, "현재 살아있는 취소분이 없습니다.");
+      paintList(firstRows, firstData, "누적 최초 감지 기록이 없습니다.");
       document.querySelector("#activeCount").textContent = data.length;
       document.querySelector("#scanCount").textContent = `${Math.max(0, scanCount - scanBase)}회`;
       const targetFacilityCount = selected.size || CATEGORIES.length;
