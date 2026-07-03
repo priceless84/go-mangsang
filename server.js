@@ -19,16 +19,16 @@ const state = {
   lastReportAt: null,
   lastRefreshAt: null,
   previousRefreshAt: null,
-  config: {
-    intervalSec: 60
-  },
+  config: { intervalSec: 60 },
   monitor: {
     count: 0,
     totalRequests: 0,
+    completedRequests: 0,
     activeCount: 0,
     range: "-",
     intervalSec: 60,
-    source: "pc-local"
+    source: "pc-local",
+    failures: 0
   },
   active: [],
   events: []
@@ -99,27 +99,20 @@ function readBody(req) {
 
 function normalizeCategoryName(value) {
   const name = String(value || "-").trim();
-  if (name === "\uc790\ub3d9\ucc28" || name === "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5") {
-    return "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5";
-  }
+  if (name === "자동차" || name === "자동차캠핑장") return "자동차캠핑장";
   return name;
 }
 
 function normalizeRoomName(value, category) {
   const text = String(value || "-").trim();
-  if (category === "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5") {
-    return text.replace(/^\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5\s*/, "");
-  }
+  if (category === "자동차캠핑장") return text.replace(/^자동차캠핑장\s*/, "");
   return text;
 }
 
 function normalizeItem(item) {
   const category = normalizeCategoryName(item.category || item.name);
   const roomName = normalizeRoomName(item.roomName || item.room, category);
-  const id = String(
-    item.id ||
-    `${item.date || ""}|${category}|${roomName}|${item.fcltyCode || ""}|${item.fcltyTyCode || ""}|${item.resveNoCode || ""}`
-  );
+  const id = String(item.id || `${item.date || ""}|${category}|${roomName}|${item.fcltyCode || ""}|${item.fcltyTyCode || ""}|${item.resveNoCode || ""}`);
 
   return {
     id,
@@ -129,7 +122,7 @@ function normalizeItem(item) {
     fcltyCode: String(item.fcltyCode || ""),
     fcltyTyCode: String(item.fcltyTyCode || ""),
     resveNoCode: String(item.resveNoCode || ""),
-    status: String(item.status || item.state || ""),
+    status: String(item.status || item.state || "취소진행중"),
     detectedAt: item.detectedAt || item.time || new Date().toISOString()
   };
 }
@@ -170,20 +163,11 @@ function safeJoinPublic(urlPath) {
 
 function sendStatic(req, res) {
   const filePath = safeJoinPublic(new URL(req.url, `http://${req.headers.host}`).pathname);
-  if (!filePath) {
-    sendText(res, 403, "Forbidden");
-    return;
-  }
+  if (!filePath) return sendText(res, 403, "Forbidden");
 
   fs.readFile(filePath, (error, content) => {
-    if (error) {
-      sendText(res, error.code === "ENOENT" ? 404 : 500, error.code === "ENOENT" ? "Not Found" : "Server Error");
-      return;
-    }
-    res.writeHead(200, {
-      "Content-Type": contentTypeFor(filePath),
-      "Cache-Control": "no-store"
-    });
+    if (error) return sendText(res, error.code === "ENOENT" ? 404 : 500, error.code === "ENOENT" ? "Not Found" : "Server Error");
+    res.writeHead(200, { "Content-Type": contentTypeFor(filePath), "Cache-Control": "no-store" });
     res.end(content);
   });
 }
@@ -202,22 +186,19 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
-    if (req.method === "OPTIONS") {
-      sendJson(res, 204, {});
-      return;
-    }
+    if (req.method === "OPTIONS") return sendJson(res, 204, {});
 
     if (req.method === "GET" && url.pathname === "/api/status") {
-      sendJson(res, 200, { ok: true, ...state, eventCount: state.events.length, monitorError, monitorRunning: false });
-      return;
+      return sendJson(res, 200, { ok: true, ...state, eventCount: state.events.length, monitorError, monitorRunning: Boolean(state.lastReportAt) });
     }
 
     if (req.method === "GET" && url.pathname === "/api/events") {
-      sendJson(res, 200, {
+      return sendJson(res, 200, {
         ok: true,
         active: activeForView(),
         events: state.events.slice().reverse(),
         config: state.config,
+        monitorError,
         status: {
           startedAt: state.startedAt,
           lastReportAt: state.lastReportAt,
@@ -226,24 +207,18 @@ const server = http.createServer(async (req, res) => {
           monitor: state.monitor
         }
       });
-      return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/config") {
-      sendJson(res, 200, { ok: true, config: state.config });
-      return;
+      return sendJson(res, 200, { ok: true, config: state.config });
     }
 
     if (req.method === "POST" && url.pathname === "/api/config") {
       const payload = JSON.parse((await readBody(req)) || "{}");
-      if (String(payload.password || "") !== CONFIG_PASSWORD) {
-        sendJson(res, 403, { ok: false, error: "bad password" });
-        return;
-      }
+      if (String(payload.password || "") !== CONFIG_PASSWORD) return sendJson(res, 403, { ok: false, error: "bad password" });
       state.config.intervalSec = normalizeIntervalSec(payload.intervalSec);
       state.monitor.intervalSec = state.config.intervalSec;
-      sendJson(res, 200, { ok: true, config: state.config });
-      return;
+      return sendJson(res, 200, { ok: true, config: state.config });
     }
 
     if (req.method === "POST" && url.pathname === "/api/report") {
@@ -251,6 +226,8 @@ const server = http.createServer(async (req, res) => {
       const now = new Date().toISOString();
       const rawActive = Array.isArray(payload.active) ? payload.active.map(normalizeItem) : [];
       const active = Array.from(new Map(rawActive.map(item => [item.id, item])).values());
+      const totalRequests = Number(payload.totalRequests || 0);
+      const failures = Number(payload.failures || 0);
 
       state.previousRefreshAt = state.lastRefreshAt;
       state.lastRefreshAt = payload.refreshedAt || now;
@@ -258,21 +235,19 @@ const server = http.createServer(async (req, res) => {
       state.active = active;
       state.monitor = {
         count: Number(payload.count || 0),
-        totalRequests: Number(payload.totalRequests || 0),
+        totalRequests,
+        completedRequests: Number(payload.completedRequests || 0),
         activeCount: active.length,
         range: String(payload.range || "-"),
         intervalSec: Number(payload.intervalSec || state.config.intervalSec),
         source: String(payload.source || "pc-local"),
-        failures: Number(payload.failures || 0)
+        failures
       };
       monitorError = String(payload.monitorError || payload.error || "");
-      if (!monitorError && state.monitor.totalRequests > 0 && state.monitor.failures >= state.monitor.totalRequests) {
-        monitorError = "캠핑코리아 조회 실패";
-      }
+      if (!monitorError && totalRequests > 0 && failures >= totalRequests) monitorError = "캠핑코리아 조회 실패";
       if (active.length > 0) upsertEvents(active);
 
-      sendJson(res, 200, { ok: true, activeCount: state.active.length, eventCount: state.events.length });
-      return;
+      return sendJson(res, 200, { ok: true, activeCount: state.active.length, eventCount: state.events.length });
     }
 
     if (req.method === "POST" && url.pathname === "/api/reset") {
@@ -280,28 +255,16 @@ const server = http.createServer(async (req, res) => {
       state.events = [];
       state.monitor.activeCount = 0;
       saveEvents();
-      sendJson(res, 200, { ok: true });
-      return;
+      return sendJson(res, 200, { ok: true });
     }
 
-    if (req.method === "GET" && url.pathname === "/api/presence") {
-      sendJson(res, 200, { ok: true, online: 1 });
-      return;
-    }
+    if (req.method === "GET" && url.pathname === "/api/presence") return sendJson(res, 200, { ok: true, online: 1 });
+    if (req.method === "POST" && url.pathname === "/api/presence") return sendJson(res, 200, { ok: true, online: 1 });
+    if (req.method === "GET") return sendStatic(req, res);
 
-    if (req.method === "POST" && url.pathname === "/api/presence") {
-      sendJson(res, 200, { ok: true, online: 1 });
-      return;
-    }
-
-    if (req.method === "GET") {
-      sendStatic(req, res);
-      return;
-    }
-
-    sendText(res, 405, "Method Not Allowed");
+    return sendText(res, 405, "Method Not Allowed");
   } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message || String(error) });
+    return sendJson(res, 500, { ok: false, error: error.message || String(error) });
   }
 });
 
