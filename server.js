@@ -265,7 +265,10 @@ const server = http.createServer(async (req, res) => {
         source: String(payload.source || "pc-local"),
         failures: Number(payload.failures || 0)
       };
-      monitorError = "";
+      monitorError = String(payload.monitorError || payload.error || "");
+      if (!monitorError && state.monitor.totalRequests > 0 && state.monitor.failures >= state.monitor.totalRequests) {
+        monitorError = "캠핑코리아 조회 실패";
+      }
       if (active.length > 0) upsertEvents(active);
 
       sendJson(res, 200, { ok: true, activeCount: state.active.length, eventCount: state.events.length });
