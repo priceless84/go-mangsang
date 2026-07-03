@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -889,6 +889,7 @@
         <div class="stat"><span>대상</span><strong id="targetCount">0</strong></div>
         <div class="stat"><span>상태</span><strong id="monitorState" style="color: var(--green)">대기</strong></div>
       </div>
+      <div id="monitorMessage" class="empty" style="display:none; margin-top:10px;"></div>
       <div class="mobile-reset-actions" aria-label="모바일 표시 초기화">
         <button class="mobile-reset-btn" id="monitorResetBtn" type="button">감시조횟수 초기화</button>
         <button class="mobile-reset-btn" id="historyResetBtn" type="button">감지기록 초기화</button>
@@ -1156,7 +1157,10 @@
         const active = Array.isArray(payload.active) ? payload.active.map(normalizeServerItem) : [];
         const events = Array.isArray(payload.events) ? payload.events.map(normalizeServerItem) : [];
         const serverMonitor = payload.status?.monitor || {};
-        lastError = String(payload.monitorError || "").trim();
+        const failures = Number(serverMonitor.failures || 0);
+        const totalRequests = Number(serverMonitor.totalRequests || 0);
+        const explicitError = String(payload.monitorError || "").trim();
+        lastError = explicitError || (totalRequests > 0 && failures >= totalRequests ? "캠핑코리아 조회 실패" : "");
         const serverInterval = Number(payload.config?.intervalSec || serverMonitor.intervalSec || interval);
         if ([10, 30, 60, 300].includes(serverInterval)) interval = String(serverInterval);
 
@@ -1225,6 +1229,11 @@
       document.querySelector("#scanCount").textContent = `${Math.max(0, scanCount - scanBase)}회`;
       const targetFacilityCount = selected.size || CATEGORIES.length;
       document.querySelector("#targetCount").textContent = targetFacilityCount * Math.max(0, dayCount() - 1);
+      const monitorMessage = document.querySelector("#monitorMessage");
+      if (monitorMessage) {
+        monitorMessage.style.display = lastError ? "block" : "none";
+        monitorMessage.textContent = lastError ? `상태 확인 필요: ${lastError}` : "";
+      }
     }
 
     document.querySelector("[data-facility-action='all']").addEventListener("click", () => {
