@@ -25,6 +25,7 @@ window.stopWatchAll && stopWatchAll();
     let currentRefreshTime = "-";
     let completedRequests = 0;
     let totalRequests = 0;
+    let failures = 0;
 
     const cancelDetectedTimes = {};
     window.myWatchTimer = null;
@@ -64,7 +65,18 @@ window.stopWatchAll && stopWatchAll();
 
     function isCanceling(site) {
         if (!site || typeof site !== "object") return false;
-        return String(site.canclYn || "").toUpperCase() === "N";
+        const canclYn = String(site.canclYn || "").toUpperCase();
+        const resveAt = String(site.resveAt || "").toUpperCase();
+        const preocpcYn = String(site.preocpcYn || "").toUpperCase();
+        const resveYn = String(site.resveYn || "").toUpperCase();
+        const imprtyYn = String(site.imprtyYn || "").toUpperCase();
+        return canclYn === "N" || (
+            resveAt === "Y" &&
+            preocpcYn === "Y" &&
+            canclYn === "N" &&
+            resveYn === "Y" &&
+            imprtyYn === "N"
+        );
     }
 
     function getActualResveNoCode(site, res, fallbackCode) {
@@ -119,7 +131,7 @@ window.stopWatchAll && stopWatchAll();
 ⚡ 망상리조트 [4개 구역 X 40일 전체] 모니터링 + 서버 대시보드
 대시보드 : ${DASHBOARD_URL}
 감시 범위 : ${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}
-진행 상태 : ${completedRequests} / ${totalRequests} 요청 완료
+진행 상태 : ${completedRequests} / ${totalRequests} 요청 완료 (실패 ${failures})
 조회 횟수 : ${count}회차
 현재 시간 : ${nowText()}
 이전 갱신 : ${previousRefreshTime}
@@ -151,6 +163,9 @@ ${Object.keys(cancelDetectedTimes).length
                     count,
                     totalRequests,
                     completedRequests,
+                    failures,
+                    monitorError: totalRequests > 0 && failures >= totalRequests ? "캠핑코리아 조회 실패" : "",
+                    source: "pc-local",
                     range: `${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}`,
                     intervalSec: CONFIG.intervalSec,
                     active: activeItems
@@ -229,6 +244,7 @@ ${Object.keys(cancelDetectedTimes).length
         isProcessing = true;
         count++;
         completedRequests = 0;
+        failures = 0;
 
         const tasks = [];
         const activeItems = [];
@@ -256,8 +272,16 @@ ${Object.keys(cancelDetectedTimes).length
 
                         completedRequests++;
 
+                        if (!result.ok) {
+                            failures++;
+                            return;
+                        }
+
                         const list = result.res?.value?.childFcltyList;
-                        if (!Array.isArray(list)) return;
+                        if (!Array.isArray(list)) {
+                            failures++;
+                            return;
+                        }
 
                         list.forEach(x => {
                             if (isCanceling(x)) {
@@ -305,4 +329,3 @@ ${Object.keys(cancelDetectedTimes).length
     console.log("🚀 4개 구역 X 40일치 전체 일정 스캔 + 서버 대시보드 시작...");
     batchCheckAll();
 })();
-
