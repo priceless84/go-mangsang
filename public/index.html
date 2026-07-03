@@ -729,6 +729,96 @@
         grid-template-columns: 1fr;
       }
     }
+
+    .grid-list.console-list {
+      padding: 10px 12px 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .grid-list.console-list .grid-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0;
+      width: max-content;
+      min-width: 100%;
+      min-height: 0;
+      padding: 3px 0;
+      border-bottom: 0;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.5;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .grid-list.console-list .grid-row:last-child {
+      border-bottom: 0;
+    }
+
+    .grid-list.console-list .console-bullet {
+      flex: 0 0 12px;
+      color: #111;
+      font-family: var(--mono);
+    }
+
+    .grid-list.console-list .console-date {
+      flex: 0 0 84px;
+      color: var(--green-dark);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 900;
+      text-align: left;
+    }
+
+    .grid-list.console-list .console-sep {
+      flex: 0 0 auto;
+      padding: 0 4px;
+      color: #c1892d;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .grid-list.console-list .console-name {
+      flex: 0 0 58px;
+      min-width: 58px;
+      color: #111;
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .grid-list.console-list .console-room {
+      flex: 0 0 48px;
+      color: #111;
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 900;
+      text-align: right;
+    }
+
+    .grid-list.console-list .console-code {
+      flex: 0 0 auto;
+      padding-left: 6px;
+      color: #213831;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .grid-list.console-list .console-time {
+      flex: 0 0 auto;
+      padding-left: 2px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+    }
   </style>
 </head>
 <body>
@@ -807,14 +897,14 @@
 
     <section class="panel section">
       <div class="section-head">
-        <h2>현재 실시간 취소 진행 중인 시설</h2>
+        <h2>[1] 🚨 현재 실시간 취소 진행 중인 시설</h2>
       </div>
       <div class="grid-list" id="activeRows"></div>
     </section>
 
     <section class="panel section">
       <div class="section-head">
-        <h2>취소 시설별 최초 감지 기록</h2>
+        <h2>[2] ⏱ 취소 시설별 최초 감지 기록 누적</h2>
       </div>
       <div class="grid-list" id="firstRows"></div>
     </section>
@@ -917,33 +1007,44 @@
       });
     }
 
-    function header() {
-      return `
-        <div class="grid-head">
-          <span>이용일</span>
-          <span>이용시설</span>
-          <span>객실</span>
-          <span>감지시간</span>
-        </div>
-      `;
+    function safeText(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[char]));
     }
 
-    function rowMarkup(row) {
-      const shortTime = row.time.replace(/^오전\s*/, "AM ").replace(/^오후\s*/, "PM ");
-      const roomText = row.status ? `${row.room} · ${row.status}` : row.room;
+    function rowMarkup(row, options = {}) {
+      const showTime = Boolean(options.showTime);
+      const date = safeText(row.date || "-");
+      const name = safeText(row.name || "-");
+      const room = safeText(row.room || "-");
+      const fcltyCode = safeText(row.fcltyCode || "-");
+      const fcltyTyCode = safeText(row.fcltyTyCode || "-");
+      const resveNoCode = safeText(row.resveNoCode || "-");
+      const timeText = safeText(row.time || "");
+      const codeText = `(${fcltyCode} / ${fcltyTyCode} / ${resveNoCode})`;
       return `
         <div class="grid-row">
-          <time>${row.date}</time>
-          <strong>${row.name}</strong>
-          <span>${roomText}</span>
-          <span>${shortTime}</span>
+          <span class="console-bullet">•</span>
+          <time class="console-date">[${date}]</time>
+          <span class="console-sep">|</span>
+          <strong class="console-name">${name}</strong>
+          <span class="console-sep">|</span>
+          <span class="console-room">${room}</span>
+          <span class="console-code">${codeText}</span>
+          ${showTime ? `<span class="console-sep">|</span><span class="console-time">${timeText} 최초감지</span>` : ""}
         </div>
       `;
     }
 
-    function paintList(target, data, emptyText) {
+    function paintList(target, data, emptyText, options = {}) {
+      target.classList.toggle("console-list", data.length > 0);
       target.innerHTML = data.length
-        ? `${header()}${data.map(rowMarkup).join("")}`
+        ? data.map(row => rowMarkup(row, options)).join("")
         : `<div class="empty">${emptyText}</div>`;
     }
 
@@ -1118,8 +1219,8 @@
       });
       dateStart.disabled = mode !== "custom";
       dateEnd.disabled = mode !== "custom";
-      paintList(activeRows, data, "현재 살아있는 취소분이 없습니다.");
-      paintList(firstRows, firstData, "누적 최초 감지 기록이 없습니다.");
+      paintList(activeRows, data, "현재 살아있는 취소분이 없습니다.", { showTime: false });
+      paintList(firstRows, firstData, "누적 최초 감지 기록이 없습니다.", { showTime: true });
       document.querySelector("#activeCount").textContent = data.length;
       document.querySelector("#scanCount").textContent = `${Math.max(0, scanCount - scanBase)}회`;
       const targetFacilityCount = selected.size || CATEGORIES.length;
