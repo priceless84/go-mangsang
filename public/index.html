@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -889,7 +889,6 @@
         <div class="stat"><span>대상</span><strong id="targetCount">0</strong></div>
         <div class="stat"><span>상태</span><strong id="monitorState" style="color: var(--green)">대기</strong></div>
       </div>
-      <div id="monitorMessage" class="empty" style="display:none; margin-top:10px;"></div>
       <div class="mobile-reset-actions" aria-label="모바일 표시 초기화">
         <button class="mobile-reset-btn" id="monitorResetBtn" type="button">감시조횟수 초기화</button>
         <button class="mobile-reset-btn" id="historyResetBtn" type="button">감지기록 초기화</button>
@@ -1018,34 +1017,36 @@
       }[char]));
     }
 
-    function rowMarkup(row, options = {}) {
-      const showTime = Boolean(options.showTime);
-      const date = safeText(row.date || "-");
-      const name = safeText(row.name || "-");
-      const room = safeText(row.room || "-");
-      const fcltyCode = safeText(row.fcltyCode || "-");
-      const fcltyTyCode = safeText(row.fcltyTyCode || "-");
-      const resveNoCode = safeText(row.resveNoCode || "-");
-      const timeText = safeText(row.time || "");
-      const codeText = `(${fcltyCode} / ${fcltyTyCode} / ${resveNoCode})`;
+    function header() {
       return `
-        <div class="grid-row">
-          <span class="console-bullet">•</span>
-          <time class="console-date">[${date}]</time>
-          <span class="console-sep">|</span>
-          <strong class="console-name">${name}</strong>
-          <span class="console-sep">|</span>
-          <span class="console-room">${room}</span>
-          <span class="console-code">${codeText}</span>
-          ${showTime ? `<span class="console-sep">|</span><span class="console-time">${timeText} 최초감지</span>` : ""}
+        <div class="grid-head">
+          <span>이용일</span>
+          <span>이용시설</span>
+          <span>객실</span>
+          <span>감시시간</span>
         </div>
       `;
     }
 
-    function paintList(target, data, emptyText, options = {}) {
-      target.classList.toggle("console-list", data.length > 0);
+    function rowMarkup(row) {
+      const date = safeText(row.date || "-");
+      const name = safeText(row.name || "-");
+      const room = safeText(row.room || "-");
+      const timeText = safeText(row.time || "-");
+      return `
+        <div class="grid-row">
+          <time>${date}</time>
+          <strong>${name}</strong>
+          <span>${room}</span>
+          <span>${timeText}</span>
+        </div>
+      `;
+    }
+
+    function paintList(target, data, emptyText) {
+      target.classList.remove("console-list");
       target.innerHTML = data.length
-        ? data.map(row => rowMarkup(row, options)).join("")
+        ? `${header()}${data.map(rowMarkup).join("")}`
         : `<div class="empty">${emptyText}</div>`;
     }
 
@@ -1157,10 +1158,7 @@
         const active = Array.isArray(payload.active) ? payload.active.map(normalizeServerItem) : [];
         const events = Array.isArray(payload.events) ? payload.events.map(normalizeServerItem) : [];
         const serverMonitor = payload.status?.monitor || {};
-        const failures = Number(serverMonitor.failures || 0);
-        const totalRequests = Number(serverMonitor.totalRequests || 0);
-        const explicitError = String(payload.monitorError || "").trim();
-        lastError = explicitError || (totalRequests > 0 && failures >= totalRequests ? "캠핑코리아 조회 실패" : "");
+        lastError = String(payload.monitorError || "").trim();
         const serverInterval = Number(payload.config?.intervalSec || serverMonitor.intervalSec || interval);
         if ([10, 30, 60, 300].includes(serverInterval)) interval = String(serverInterval);
 
@@ -1223,17 +1221,12 @@
       });
       dateStart.disabled = mode !== "custom";
       dateEnd.disabled = mode !== "custom";
-      paintList(activeRows, data, "현재 살아있는 취소분이 없습니다.", { showTime: false });
-      paintList(firstRows, firstData, "누적 최초 감지 기록이 없습니다.", { showTime: true });
+      paintList(activeRows, data, "현재 살아있는 취소분이 없습니다.");
+      paintList(firstRows, firstData, "누적 최초 감지 기록이 없습니다.");
       document.querySelector("#activeCount").textContent = data.length;
       document.querySelector("#scanCount").textContent = `${Math.max(0, scanCount - scanBase)}회`;
       const targetFacilityCount = selected.size || CATEGORIES.length;
       document.querySelector("#targetCount").textContent = targetFacilityCount * Math.max(0, dayCount() - 1);
-      const monitorMessage = document.querySelector("#monitorMessage");
-      if (monitorMessage) {
-        monitorMessage.style.display = lastError ? "block" : "none";
-        monitorMessage.textContent = lastError ? `상태 확인 필요: ${lastError}` : "";
-      }
     }
 
     document.querySelector("[data-facility-action='all']").addEventListener("click", () => {
