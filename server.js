@@ -11,6 +11,7 @@ const PUBLIC_DIR = fs.existsSync(path.join(__dirname, "public"))
   : __dirname;
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "events.json");
+const ACTIVE_FILE = path.join(DATA_DIR, "active.json");
 const MAX_EVENTS = 2000;
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || "6185";
 
@@ -19,16 +20,16 @@ const state = {
   lastReportAt: null,
   lastRefreshAt: null,
   previousRefreshAt: null,
-  config: { intervalSec: 60 },
+  config: {
+    intervalSec: 60
+  },
   monitor: {
     count: 0,
     totalRequests: 0,
-    completedRequests: 0,
     activeCount: 0,
     range: "-",
     intervalSec: 60,
-    source: "pc-local",
-    failures: 0
+    source: "pc-local"
   },
   active: [],
   events: []
@@ -44,6 +45,7 @@ function normalizeIntervalSec(value) {
 function ensureDataFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, "[]", "utf8");
+  if (!fs.existsSync(ACTIVE_FILE)) fs.writeFileSync(ACTIVE_FILE, "[]", "utf8");
 }
 
 function loadEvents() {
@@ -54,11 +56,22 @@ function loadEvents() {
   } catch {
     state.events = [];
   }
+  try {
+    const parsedActive = JSON.parse(fs.readFileSync(ACTIVE_FILE, "utf8"));
+    if (Array.isArray(parsedActive)) state.active = parsedActive.map(normalizeItem);
+  } catch {
+    state.active = [];
+  }
 }
 
 function saveEvents() {
   ensureDataFile();
   fs.writeFileSync(DATA_FILE, JSON.stringify(state.events.slice(-MAX_EVENTS), null, 2), "utf8");
+}
+
+function saveActive() {
+  ensureDataFile();
+  fs.writeFileSync(ACTIVE_FILE, JSON.stringify(state.active, null, 2), "utf8");
 }
 
 function sendJson(res, statusCode, payload) {
@@ -99,20 +112,27 @@ function readBody(req) {
 
 function normalizeCategoryName(value) {
   const name = String(value || "-").trim();
-  if (name === "자동차" || name === "자동차캠핑장") return "자동차캠핑장";
+  if (name === "\uc790\ub3d9\ucc28" || name === "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5") {
+    return "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5";
+  }
   return name;
 }
 
 function normalizeRoomName(value, category) {
   const text = String(value || "-").trim();
-  if (category === "자동차캠핑장") return text.replace(/^자동차캠핑장\s*/, "");
+  if (category === "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5") {
+    return text.replace(/^\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5\s*/, "");
+  }
   return text;
 }
 
 function normalizeItem(item) {
   const category = normalizeCategoryName(item.category || item.name);
   const roomName = normalizeRoomName(item.roomName || item.room, category);
-  const id = String(item.id || `${item.date || ""}|${category}|${roomName}|${item.fcltyCode || ""}|${item.fcltyTyCode || ""}|${item.resveNoCode || ""}`);
+  const id = String(
+    item.id ||
+    `${item.date || ""}|${category}|${roomName}|${item.fcltyCode || ""}|${item.fcltyTyCode || ""}|${item.resveNoCode || ""}`
+  );
 
   return {
     id,
@@ -122,7 +142,7 @@ function normalizeItem(item) {
     fcltyCode: String(item.fcltyCode || ""),
     fcltyTyCode: String(item.fcltyTyCode || ""),
     resveNoCode: String(item.resveNoCode || ""),
-    status: String(item.status || item.state || "취소진행중"),
+    status: String(item.status || item.state || ""),
     detectedAt: item.detectedAt || item.time || new Date().toISOString()
   };
 }
@@ -163,11 +183,20 @@ function safeJoinPublic(urlPath) {
 
 function sendStatic(req, res) {
   const filePath = safeJoinPublic(new URL(req.url, `http://${req.headers.host}`).pathname);
-  if (!filePath) return sendText(res, 403, "Forbidden");
+  if (!filePath) {
+    sendText(res, 403, "Forbidden");
+    return;
+  }
 
   fs.readFile(filePath, (error, content) => {
-    if (error) return sendText(res, error.code === "ENOENT" ? 404 : 500, error.code === "ENOENT" ? "Not Found" : "Server Error");
-    res.writeHead(200, { "Content-Type": contentTypeFor(filePath), "Cache-Control": "no-store" });
+    if (error) {
+      sendText(res, error.code === "ENOENT" ? 404 : 500, error.code === "ENOENT" ? "Not Found" : "Server Error");
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": contentTypeFor(filePath),
+      "Cache-Control": "no-store"
+    });
     res.end(content);
   });
 }
@@ -186,19 +215,22 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
-    if (req.method === "OPTIONS") return sendJson(res, 204, {});
+    if (req.method === "OPTIONS") {
+      sendJson(res, 204, {});
+      return;
+    }
 
     if (req.method === "GET" && url.pathname === "/api/status") {
-      return sendJson(res, 200, { ok: true, ...state, eventCount: state.events.length, monitorError, monitorRunning: Boolean(state.lastReportAt) });
+      sendJson(res, 200, { ok: true, ...state, eventCount: state.events.length, monitorError, monitorRunning: false });
+      return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/events") {
-      return sendJson(res, 200, {
+      sendJson(res, 200, {
         ok: true,
         active: activeForView(),
         events: state.events.slice().reverse(),
         config: state.config,
-        monitorError,
         status: {
           startedAt: state.startedAt,
           lastReportAt: state.lastReportAt,
@@ -207,18 +239,24 @@ const server = http.createServer(async (req, res) => {
           monitor: state.monitor
         }
       });
+      return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/config") {
-      return sendJson(res, 200, { ok: true, config: state.config });
+      sendJson(res, 200, { ok: true, config: state.config });
+      return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/config") {
       const payload = JSON.parse((await readBody(req)) || "{}");
-      if (String(payload.password || "") !== CONFIG_PASSWORD) return sendJson(res, 403, { ok: false, error: "bad password" });
+      if (String(payload.password || "") !== CONFIG_PASSWORD) {
+        sendJson(res, 403, { ok: false, error: "bad password" });
+        return;
+      }
       state.config.intervalSec = normalizeIntervalSec(payload.intervalSec);
       state.monitor.intervalSec = state.config.intervalSec;
-      return sendJson(res, 200, { ok: true, config: state.config });
+      sendJson(res, 200, { ok: true, config: state.config });
+      return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/report") {
@@ -226,45 +264,59 @@ const server = http.createServer(async (req, res) => {
       const now = new Date().toISOString();
       const rawActive = Array.isArray(payload.active) ? payload.active.map(normalizeItem) : [];
       const active = Array.from(new Map(rawActive.map(item => [item.id, item])).values());
-      const totalRequests = Number(payload.totalRequests || 0);
-      const failures = Number(payload.failures || 0);
 
       state.previousRefreshAt = state.lastRefreshAt;
       state.lastRefreshAt = payload.refreshedAt || now;
       state.lastReportAt = now;
       state.active = active;
+      saveActive();
       state.monitor = {
         count: Number(payload.count || 0),
-        totalRequests,
-        completedRequests: Number(payload.completedRequests || 0),
+        totalRequests: Number(payload.totalRequests || 0),
         activeCount: active.length,
         range: String(payload.range || "-"),
         intervalSec: Number(payload.intervalSec || state.config.intervalSec),
         source: String(payload.source || "pc-local"),
-        failures
+        failures: Number(payload.failures || 0)
       };
       monitorError = String(payload.monitorError || payload.error || "");
-      if (!monitorError && totalRequests > 0 && failures >= totalRequests) monitorError = "캠핑코리아 조회 실패";
+      if (!monitorError && state.monitor.totalRequests > 0 && state.monitor.failures >= state.monitor.totalRequests) {
+        monitorError = "캠핑코리아 조회 실패";
+      }
       if (active.length > 0) upsertEvents(active);
 
-      return sendJson(res, 200, { ok: true, activeCount: state.active.length, eventCount: state.events.length });
+      sendJson(res, 200, { ok: true, activeCount: state.active.length, eventCount: state.events.length });
+      return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/reset") {
       state.active = [];
       state.events = [];
       state.monitor.activeCount = 0;
+      saveActive();
       saveEvents();
-      return sendJson(res, 200, { ok: true });
+      sendJson(res, 200, { ok: true });
+      return;
     }
 
-    if (req.method === "GET" && url.pathname === "/api/presence") return sendJson(res, 200, { ok: true, online: 1 });
-    if (req.method === "POST" && url.pathname === "/api/presence") return sendJson(res, 200, { ok: true, online: 1 });
-    if (req.method === "GET") return sendStatic(req, res);
+    if (req.method === "GET" && url.pathname === "/api/presence") {
+      sendJson(res, 200, { ok: true, online: 1 });
+      return;
+    }
 
-    return sendText(res, 405, "Method Not Allowed");
+    if (req.method === "POST" && url.pathname === "/api/presence") {
+      sendJson(res, 200, { ok: true, online: 1 });
+      return;
+    }
+
+    if (req.method === "GET") {
+      sendStatic(req, res);
+      return;
+    }
+
+    sendText(res, 405, "Method Not Allowed");
   } catch (error) {
-    return sendJson(res, 500, { ok: false, error: error.message || String(error) });
+    sendJson(res, 500, { ok: false, error: error.message || String(error) });
   }
 });
 
