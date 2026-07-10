@@ -127,23 +127,25 @@ function normalizeRoomName(value, category) {
 }
 
 function normalizeItem(item) {
-  const category = normalizeCategoryName(item.category || item.name);
-  const roomName = normalizeRoomName(item.roomName || item.room, category);
+  const category = normalizeCategoryName(item.category || item.name || item.catName || item.fcltyCategory);
+  const roomName = normalizeRoomName(item.roomName || item.room || item.fcltyNm || item.nameCol, category);
   const id = String(
     item.id ||
-    `${item.date || ""}|${category}|${roomName}|${item.fcltyCode || ""}|${item.fcltyTyCode || ""}|${item.resveNoCode || ""}`
+    `${item.date || item.beginDate || item.resveBeginDe || ""}|${category}|${roomName}|${item.fcltyCode || ""}|${item.fcltyTyCode || ""}|${item.resveNoCode || ""}`
   );
+
+  const detectedAt = item.detectedAt || item.time || item.detected || item.detectedTime || new Date().toISOString();
 
   return {
     id,
-    date: String(item.date || "-"),
+    date: String(item.date || item.beginDate || item.resveBeginDe || "-"),
     category,
     roomName,
     fcltyCode: String(item.fcltyCode || ""),
     fcltyTyCode: String(item.fcltyTyCode || ""),
     resveNoCode: String(item.resveNoCode || ""),
-    status: String(item.status || item.state || ""),
-    detectedAt: item.detectedAt || item.time || new Date().toISOString()
+    status: String(item.status || item.state || item.canclYn || ""),
+    detectedAt
   };
 }
 
@@ -263,7 +265,9 @@ const server = http.createServer(async (req, res) => {
       const payload = JSON.parse((await readBody(req)) || "{}");
       const now = new Date().toISOString();
       const rawActive = Array.isArray(payload.active) ? payload.active.map(normalizeItem) : [];
+      const rawEvents = Array.isArray(payload.events) ? payload.events.map(normalizeItem) : [];
       const active = Array.from(new Map(rawActive.map(item => [item.id, item])).values());
+      const reportedEvents = Array.from(new Map(rawEvents.map(item => [item.id, item])).values());
 
       state.previousRefreshAt = state.lastRefreshAt;
       state.lastRefreshAt = payload.refreshedAt || now;
@@ -284,6 +288,7 @@ const server = http.createServer(async (req, res) => {
         monitorError = "캠핑코리아 조회 실패";
       }
       if (active.length > 0) upsertEvents(active);
+      if (reportedEvents.length > 0) upsertEvents(reportedEvents);
 
       sendJson(res, 200, { ok: true, activeCount: state.active.length, eventCount: state.events.length });
       return;
