@@ -115,9 +115,12 @@ function readBody(req) {
 
 function normalizeCategoryName(value) {
   const name = String(value || "-").trim();
-  if (name === "\uc790\ub3d9\ucc28" || name === "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5") {
+  if (name.includes("\uc790\ub3d9\ucc28") || name.includes("\ucea0\ud551")) {
     return "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5";
   }
+  if (name.includes("\ud5c8\ud5c8")) return "\ud5c8\ud5c8\ubc14\ub2e4";
+  if (name.includes("\ub09c\ubc14\ub2e4")) return "\ub09c\ubc14\ub2e4";
+  if (name.includes("\ub4e0\ubc14\ub2e4")) return "\ub4e0\ubc14\ub2e4";
   return name;
 }
 
@@ -238,6 +241,63 @@ function handleHeartbeatPayload(payload) {
   return active;
 }
 
+function isCancelStart(value) {
+  const text = String(value || "").trim();
+  return text === "N" || text === "canceling" || text.includes("\ubc1c\uc0dd") || text.includes("cancel");
+}
+
+function isCancelEnd(value) {
+  const text = String(value || "").trim();
+  return text === "Y" || text === "available" || text.includes("\uc885\ub8cc") || text.includes("\uc608\uc57d\uac00\ub2a5") || text.includes("\uc608\uc57d\ub9c8\uac10") || text.includes("\ubaa9\ub85d\uc5c6\uc74c");
+}
+
+function activeFromStateEvents(events) {
+  if (!Array.isArray(events)) return [];
+  const latest = new Map();
+  for (const event of events) {
+    if (!event || typeof event !== "object") continue;
+    const type = String(event.event_type || event.type || "").trim();
+    const stateText = String(event.state || event.status || event.canclYn || "").trim();
+    if (type && type !== "canceling" && type !== "available") continue;
+    const item = normalizeItem({
+      ...event,
+      status: isCancelEnd(stateText) || type === "available" ? "Y" : "N",
+      event_type: type || "canceling",
+      detectedAt: event.detectedAt || event.detected_at || event.received_at
+    });
+    if (item.date === "-" || item.category === "-" || item.roomName === "-") continue;
+    const time = new Date(item.detectedAt).getTime() || 0;
+    const previous = latest.get(item.id);
+    if (!previous || time >= previous.time) {
+      latest.set(item.id, {
+        item,
+        time,
+        active: !isCancelEnd(stateText) && (isCancelStart(stateText) || type === "canceling")
+      });
+    }
+  }
+  return Array.from(latest.values())
+    .filter(entry => entry.active)
+    .map(entry => entry.item);
+}
+
+function mergeActiveItems(primary, secondary) {
+  const map = new Map();
+  for (const item of [...primary, ...secondary]) {
+    const normalized = normalizeItem(item);
+    if (normalized.date === "-" || normalized.category === "-" || normalized.roomName === "-") continue;
+    map.set(normalized.id, normalized);
+  }
+  return Array.from(map.values());
+}
+
+function activeIds(items) {
+  return items
+    .map(item => normalizeItem(item).id)
+    .sort()
+    .join("|");
+}
+
 function stateEventsForApi() {
   return state.events.map(eventForState);
 }
@@ -271,7 +331,23 @@ async function syncStateSignal() {
     if (!response.ok) return;
     const payload = await response.json();
     if (payload && payload.heartbeat) {
-      handleHeartbeatPayload(payload);
+      const heartbeatActive = handleHeartbeatPayload(payload);
+      const eventActive = activeFromStateEvents(payload.events);
+      const mergedActive = mergeActiveItems(heartbeatActive, eventActive);
+      if (activeIds(mergedActive) !== activeIds(heartbeatActive)) {
+        state.active = mergedActive;
+        state.heartbeat = {
+          ...state.heartbeat,
+          canceling_count: mergedActive.length,
+          canceling_items: mergedActive.map(eventForState)
+        };
+        state.monitor = {
+          ...state.monitor,
+          activeCount: mergedActive.length
+        };
+        saveActive();
+        upsertEvents(mergedActive);
+      }
     }
   } catch (error) {}
 }
