@@ -590,8 +590,8 @@
 
       .chips {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 6px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 3px;
         overflow: visible;
       }
 
@@ -606,10 +606,21 @@
 
       .chip {
         width: 100%;
-        padding: 0 8px;
-        white-space: normal;
+        padding: 0 3px;
+        gap: 2px;
+        white-space: nowrap;
         word-break: keep-all;
         line-height: 1.2;
+      }
+
+      .chip::before {
+        width: 13px;
+        height: 13px;
+        flex-basis: 13px;
+      }
+
+      .chip[data-facility="자동차캠핑장"] {
+        font-size: 10px;
       }
 
       .seg {
@@ -734,7 +745,7 @@
       }
 
       .chips {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
 
       .interval {
@@ -1102,6 +1113,15 @@
       return `${row.date}|${row.name}|${row.room}|${row.fcltyCode}|${row.fcltyTyCode}|${row.resveNoCode}`;
     }
 
+    function uniqueRows(source) {
+      const map = new Map();
+      source.forEach(row => {
+        const key = keyOf(row);
+        if (!map.has(key)) map.set(key, row);
+      });
+      return [...map.values()];
+    }
+
     function beep() {
       try {
         new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg").play();
@@ -1196,9 +1216,10 @@
         const serverInterval = Number(payload.config?.intervalSec || serverMonitor.intervalSec || interval);
         if ([10, 30, 60, 300].includes(serverInterval)) interval = String(serverInterval);
 
-        rows = active.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko"));
+        rows = uniqueRows(active).sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko"));
 
-        events.forEach(row => {
+        firstSeen.clear();
+        uniqueRows(events.length ? events : rows).forEach(row => {
           if (historyResetAt && row.detectedMs <= historyResetAt) return;
           const key = keyOf(row);
           if (!firstSeen.has(key)) {
