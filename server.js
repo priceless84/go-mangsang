@@ -14,6 +14,7 @@ const DATA_FILE = path.join(DATA_DIR, "events.json");
 const ACTIVE_FILE = path.join(DATA_DIR, "active.json");
 const MAX_EVENTS = 2000;
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || "6185";
+const STATE_SIGNAL_URL = process.env.STATE_SIGNAL_URL || "https://mangsang-alarm-dashboard.onrender.com/api/state";
 
 const state = {
   startedAt: new Date().toISOString(),
@@ -31,11 +32,13 @@ const state = {
     intervalSec: 60,
     source: "pc-local"
   },
+  heartbeat: null,
   active: [],
   events: []
 };
 
 let monitorError = "";
+let lastStateSyncAt = 0;
 
 function normalizeIntervalSec(value) {
   const sec = Number(value);
@@ -127,26 +130,150 @@ function normalizeRoomName(value, category) {
 }
 
 function normalizeItem(item) {
-  const category = normalizeCategoryName(item.category || item.name || item.catName || item.fcltyCategory);
-  const roomName = normalizeRoomName(item.roomName || item.room || item.fcltyNm || item.nameCol, category);
+  const category = normalizeCategoryName(item.category || item.name || item.catName || item.fcltyCategory || item.facility);
+  const roomName = normalizeRoomName(item.roomName || item.room_name || item.room || item.fcltyNm || item.nameCol, category);
   const id = String(
     item.id ||
-    `${item.date || item.beginDate || item.resveBeginDe || ""}|${category}|${roomName}|${item.fcltyCode || ""}|${item.fcltyTyCode || ""}|${item.resveNoCode || ""}`
+    `${item.date || item.target_date || item.beginDate || item.resveBeginDe || ""}|${category}|${roomName}|${item.fcltyCode || ""}|${item.fcltyTyCode || ""}|${item.resveNoCode || ""}`
   );
 
-  const detectedAt = item.detectedAt || item.time || item.detected || item.detectedTime || new Date().toISOString();
+  const detectedAt = item.detectedAt || item.detected_at || item.time || item.detected || item.detectedTime || item.received_at || new Date().toISOString();
 
   return {
     id,
-    date: String(item.date || item.beginDate || item.resveBeginDe || "-"),
+    date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"),
     category,
     roomName,
     fcltyCode: String(item.fcltyCode || ""),
     fcltyTyCode: String(item.fcltyTyCode || ""),
     resveNoCode: String(item.resveNoCode || ""),
-    status: String(item.status || item.state || item.canclYn || ""),
+    status: String(item.status || item.canclYn || (item.event_type === "canceling" ? "N" : "") || item.state || ""),
     detectedAt
   };
+}
+
+function parseDetailText(text) {
+  const raw = String(text || "").trim();
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})\s+(.+?)\s+(\S+)$/);
+  if (!match) return { raw };
+  return {
+    target_date: match[1],
+    facility: match[2],
+    room: match[3],
+    room_name: match[3]
+  };
+}
+
+function heartbeatCancelingItems(heartbeat) {
+  if (!heartbeat || typeof heartbeat !== "object") return [];
+  if (Array.isArray(heartbeat.canceling_items)) return heartbeat.canceling_items;
+  if (Array.isArray(heartbeat.canceling)) return heartbeat.canceling;
+  if (Array.isArray(heartbeat.active)) return heartbeat.active;
+  if (Array.isArray(heartbeat.canceling_details)) {
+    return heartbeat.canceling_details.map(parseDetailText);
+  }
+  return [];
+}
+
+function normalizeHeartbeat(payload) {
+  const heartbeat = payload.heartbeat && typeof payload.heartbeat === "object"
+    ? payload.heartbeat
+    : payload;
+  const now = new Date().toISOString();
+  return {
+    ...heartbeat,
+    received_at: heartbeat.received_at || heartbeat.receivedAt || payload.received_at || now,
+    client: heartbeat.client || payload.client || heartbeat.source || payload.source || "state-signal"
+  };
+}
+
+function eventForState(item) {
+  return {
+    client: item.source || state.monitor.source || "go-mangsang",
+    event_type: item.status === "N" ? "canceling" : "available",
+    state: item.status === "N" ? "발생" : item.status,
+    target_date: item.date,
+    facility: item.category,
+    room: item.roomName,
+    room_name: item.roomName,
+    detected_at: item.detectedAt,
+    received_at: item.detectedAt,
+    message: `${item.date} ${item.category} ${item.roomName}`.trim()
+  };
+}
+
+function handleHeartbeatPayload(payload) {
+  const heartbeat = normalizeHeartbeat(payload || {});
+  const rawCanceling = heartbeatCancelingItems(heartbeat);
+  const active = rawCanceling
+    .map(item => normalizeItem({
+      ...item,
+      status: "N",
+      event_type: "canceling",
+      detectedAt: item.detectedAt || item.detected_at || heartbeat.received_at
+    }))
+    .filter(item => item.date !== "-" && item.category !== "-" && item.roomName !== "-");
+
+  state.heartbeat = {
+    ...heartbeat,
+    canceling_count: Number.isFinite(Number(heartbeat.canceling_count)) ? Number(heartbeat.canceling_count) : active.length,
+    canceling_items: active.map(eventForState)
+  };
+  state.previousRefreshAt = state.lastRefreshAt;
+  state.lastRefreshAt = heartbeat.received_at;
+  state.lastReportAt = new Date().toISOString();
+  state.monitor = {
+    ...state.monitor,
+    count: Number(heartbeat.count || state.monitor.count || 0),
+    activeCount: active.length,
+    source: String(heartbeat.client || "state-signal")
+  };
+  monitorError = String(heartbeat.error || heartbeat.monitorError || heartbeat.message || "");
+
+  if (Array.isArray(heartbeat.canceling_items) || Array.isArray(heartbeat.canceling) || Array.isArray(heartbeat.active) || Array.isArray(heartbeat.canceling_details)) {
+    state.active = active;
+    saveActive();
+  }
+  if (active.length > 0) upsertEvents(active);
+  return active;
+}
+
+function stateEventsForApi() {
+  return state.events.map(eventForState);
+}
+
+function heartbeatForApi() {
+  if (state.heartbeat) return state.heartbeat;
+  const active = activeForView();
+  return {
+    received_at: state.lastRefreshAt || state.lastReportAt || state.startedAt,
+    status: "running",
+    client: state.monitor.source || "go-mangsang",
+    canceling_count: active.length,
+    canceling_items: active.map(eventForState),
+    available_count: 0,
+    available_items: []
+  };
+}
+
+async function syncStateSignal() {
+  if (!STATE_SIGNAL_URL || Date.now() - lastStateSyncAt < 5000) return;
+  lastStateSyncAt = Date.now();
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const response = await fetch(STATE_SIGNAL_URL, {
+      cache: "no-store",
+      signal: controller.signal,
+      headers: { "User-Agent": "go-mangsang-state-sync/1.0" }
+    });
+    clearTimeout(timer);
+    if (!response.ok) return;
+    const payload = await response.json();
+    if (payload && payload.heartbeat) {
+      handleHeartbeatPayload(payload);
+    }
+  } catch (error) {}
 }
 
 function upsertEvents(items) {
@@ -231,11 +358,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/status") {
+      await syncStateSignal();
       sendJson(res, 200, { ok: true, ...state, eventCount: state.events.length, monitorError, monitorRunning: false });
       return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/events") {
+      await syncStateSignal();
       sendJson(res, 200, {
         ok: true,
         active: activeForView(),
@@ -248,6 +377,16 @@ const server = http.createServer(async (req, res) => {
           previousRefreshAt: state.previousRefreshAt,
           monitor: state.monitor
         }
+      });
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/state") {
+      await syncStateSignal();
+      sendJson(res, 200, {
+        ok: true,
+        heartbeat: heartbeatForApi(),
+        events: stateEventsForApi()
       });
       return;
     }
@@ -266,6 +405,18 @@ const server = http.createServer(async (req, res) => {
       state.config.intervalSec = normalizeIntervalSec(payload.intervalSec);
       state.monitor.intervalSec = state.config.intervalSec;
       sendJson(res, 200, { ok: true, config: state.config });
+      return;
+    }
+
+    if (req.method === "POST" && (url.pathname === "/api/heartbeat" || url.pathname === "/api/state")) {
+      const payload = JSON.parse((await readBody(req)) || "{}");
+      const active = handleHeartbeatPayload(payload);
+      sendJson(res, 200, {
+        ok: true,
+        activeCount: active.length,
+        eventCount: state.events.length,
+        heartbeat: state.heartbeat
+      });
       return;
     }
 
