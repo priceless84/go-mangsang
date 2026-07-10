@@ -204,7 +204,15 @@ function sendStatic(req, res) {
 }
 
 function activeForView() {
-  return state.active.slice().sort((a, b) =>
+  const recentCutoff = Date.now() - 2 * 60 * 60 * 1000;
+  const fallbackActive = state.active.length > 0
+    ? state.active
+    : state.events.filter(item => {
+      const detectedAt = new Date(item.detectedAt).getTime();
+      return item.status === "N" && Number.isFinite(detectedAt) && detectedAt >= recentCutoff;
+    });
+
+  return fallbackActive.slice().sort((a, b) =>
     a.date.localeCompare(b.date) ||
     a.category.localeCompare(b.category, "ko") ||
     a.roomName.localeCompare(b.roomName, "ko")
@@ -272,12 +280,15 @@ const server = http.createServer(async (req, res) => {
       state.previousRefreshAt = state.lastRefreshAt;
       state.lastRefreshAt = payload.refreshedAt || now;
       state.lastReportAt = now;
-      state.active = active;
-      saveActive();
+      const allRequestsFailed = Number(payload.totalRequests || 0) > 0 && Number(payload.failures || 0) >= Number(payload.totalRequests || 0);
+      if (active.length > 0 || !allRequestsFailed) {
+        state.active = active;
+        saveActive();
+      }
       state.monitor = {
         count: Number(payload.count || 0),
         totalRequests: Number(payload.totalRequests || 0),
-        activeCount: active.length,
+        activeCount: state.active.length,
         range: String(payload.range || "-"),
         intervalSec: Number(payload.intervalSec || state.config.intervalSec),
         source: String(payload.source || "pc-local"),
