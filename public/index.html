@@ -446,9 +446,9 @@
 
     .grid-head {
       padding-bottom: 7px;
-      color: var(--muted);
+      color: #111;
       border-bottom: 1px solid var(--line);
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 800;
     }
 
@@ -456,7 +456,8 @@
       min-height: 42px;
       padding: 8px 0;
       border-bottom: 1px solid #edf2ef;
-      font-size: 12px;
+      color: #111;
+      font-size: 13px;
       font-weight: 800;
     }
 
@@ -472,9 +473,9 @@
 
     .grid-row time,
     .grid-row span {
-      color: var(--muted);
+      color: #111;
       font-family: var(--mono);
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 800;
     }
 
@@ -483,6 +484,11 @@
       white-space: nowrap;
       font-size: 12px;
       font-weight: 800;
+    }
+
+    .grid-row .remaining-soon {
+      color: #d82323;
+      font-weight: 950;
     }
 
     .grid-head span:nth-child(3),
@@ -584,7 +590,7 @@
 
       .chips {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
         gap: 6px;
         overflow: visible;
       }
@@ -603,7 +609,7 @@
         padding: 0 8px;
         white-space: normal;
         word-break: keep-all;
-        line-height: 1.15;
+        line-height: 1.2;
       }
 
       .seg {
@@ -662,14 +668,15 @@
       .grid-head,
       .grid-row {
         display: grid;
-        grid-template-columns: 52px 49px 43px 45px 45px 59px;
+        grid-template-columns: 50px 51px 42px 44px 44px 61px;
         justify-content: space-between;
         gap: 3px;
         align-items: center;
       }
 
       .grid-head {
-        font-size: 11px;
+        color: #111;
+        font-size: 12px;
         letter-spacing: 0;
       }
 
@@ -677,7 +684,8 @@
         min-height: 0;
         padding: 9px 0;
         border-bottom: 1px solid #edf2ef;
-        font-size: 11px;
+        color: #111;
+        font-size: 12px;
         letter-spacing: 0;
       }
 
@@ -686,19 +694,20 @@
       }
 
       .grid-row time {
-        color: var(--green-dark);
-        font-size: 11px;
+        color: #111;
+        font-size: 12px;
         font-weight: 800;
       }
 
       .grid-row strong {
-        font-size: 11px;
+        color: #111;
+        font-size: 12px;
         font-weight: 800;
       }
 
       .grid-row span:nth-child(3) {
-        color: var(--muted);
-        font-size: 11px;
+        color: #111;
+        font-size: 12px;
         font-family: var(--sans);
         font-weight: 800;
         text-align: right;
@@ -707,8 +716,8 @@
       .grid-row span:nth-child(4),
       .grid-row span:nth-child(5),
       .grid-row span:nth-child(6) {
-        color: var(--muted);
-        font-size: 11px;
+        color: #111;
+        font-size: 12px;
         font-weight: 800;
         text-align: right;
       }
@@ -724,7 +733,10 @@
         display: none;
       }
 
-      .chips,
+      .chips {
+        grid-template-columns: 1fr;
+      }
+
       .interval {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -841,7 +853,6 @@
       </div>
       <div class="top-actions" aria-label="대시보드 상태">
         <div class="status">감시 실행 중</div>
-        <div class="status online-status" id="onlineStatus">접속 -명</div>
       </div>
     </header>
 
@@ -878,24 +889,18 @@
         </div>
       </div>
 
-      <div class="stats" aria-label="상태 신호">
-        <div class="stat"><span>감지</span><strong id="activeCount">0</strong></div>
-        <div class="stat"><span>조회</span><strong id="scanCount">1회</strong></div>
-        <div class="stat"><span>대상</span><strong id="targetCount">0</strong></div>
-        <div class="stat"><span>상태</span><strong id="monitorState" style="color: var(--green)">대기</strong></div>
-      </div>
     </section>
 
     <section class="panel section">
       <div class="section-head">
-        <h2>[1] 🚨 현재 실시간 취소 진행 중인 시설</h2>
+        <h2>현재 실시간 취소 진행 중인 시설</h2>
       </div>
       <div class="grid-list" id="activeRows"></div>
     </section>
 
     <section class="panel section">
       <div class="section-head">
-        <h2>[2] ⏱ 취소 시설별 최초 감지 기록 누적</h2>
+        <h2>취소 시설별 최초 감지 기록 누적</h2>
       </div>
       <div class="grid-list" id="firstRows"></div>
     </section>
@@ -1007,6 +1012,18 @@
       }[char]));
     }
 
+    function setText(selector, value) {
+      const target = document.querySelector(selector);
+      if (target) target.textContent = value;
+    }
+
+    function setMonitorState(value, color) {
+      const target = document.querySelector("#monitorState");
+      if (!target) return;
+      target.textContent = value;
+      target.style.color = color;
+    }
+
     function header() {
       return `
         <div class="grid-head">
@@ -1047,6 +1064,12 @@
       return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
     }
 
+    function remainingClass(targetMs) {
+      if (!targetMs) return "";
+      const remaining = targetMs - Date.now();
+      return remaining > 0 && remaining <= 30 * 60 * 1000 ? "remaining-soon" : "";
+    }
+
     function rowMarkup(row) {
       const date = safeText(String(row.date || "-").replace(/^\d{4}-/, ""));
       const name = safeText(row.name || "-");
@@ -1055,6 +1078,7 @@
       const readyMs = expectedReadyMs(row);
       const expectedText = safeText(formatClock(readyMs));
       const remainingText = safeText(formatRemaining(readyMs));
+      const remainingClassName = remainingClass(readyMs);
       return `
         <div class="grid-row">
           <time>${date}</time>
@@ -1062,7 +1086,7 @@
           <span>${room}</span>
           <span>${timeText}</span>
           <span>${expectedText}</span>
-          <span>${remainingText}</span>
+          <span class="${remainingClassName}">${remainingText}</span>
         </div>
       `;
     }
@@ -1085,8 +1109,11 @@
     }
 
     function normalizeFacilityName(value) {
-      const name = String(value || "-");
-      if (name === "자동차") return "자동차캠핑장";
+      const name = String(value || "-").trim();
+      if (name.includes("자동차") || name.includes("캠핑")) return "자동차캠핑장";
+      if (name.includes("허허")) return "허허바다";
+      if (name.includes("난바다")) return "난바다";
+      if (name.includes("든바다")) return "든바다";
       return name;
     }
 
@@ -1155,8 +1182,7 @@
       isProcessing = true;
       scanCount++;
       lastError = "";
-      document.querySelector("#monitorState").textContent = "조회중";
-      document.querySelector("#monitorState").style.color = "var(--warn)";
+      setMonitorState("조회중", "var(--warn)");
       render();
 
       try {
@@ -1181,12 +1207,10 @@
         });
 
         scanCount = Number(serverMonitor.count || scanCount);
-        document.querySelector("#monitorState").textContent = lastError ? "오류" : "정상";
-        document.querySelector("#monitorState").style.color = lastError ? "#d53939" : "var(--green)";
+        setMonitorState(lastError ? "오류" : "정상", lastError ? "#d53939" : "var(--green)");
       } catch (e) {
         lastError = "서버대기";
-        document.querySelector("#monitorState").textContent = "오류";
-        document.querySelector("#monitorState").style.color = "#d53939";
+        setMonitorState("오류", "#d53939");
       } finally {
         isProcessing = false;
         render();
@@ -1226,10 +1250,10 @@
       dateEnd.disabled = mode !== "custom";
       paintList(activeRows, data, "현재 살아있는 취소분이 없습니다.");
       paintList(firstRows, firstData, "누적 최초 감지 기록이 없습니다.");
-      document.querySelector("#activeCount").textContent = data.length;
-      document.querySelector("#scanCount").textContent = `${Math.max(0, scanCount - scanBase)}회`;
+      setText("#activeCount", data.length);
+      setText("#scanCount", `${Math.max(0, scanCount - scanBase)}회`);
       const targetFacilityCount = selected.size || CATEGORIES.length;
-      document.querySelector("#targetCount").textContent = targetFacilityCount * Math.max(0, dayCount() - 1);
+      setText("#targetCount", targetFacilityCount * Math.max(0, dayCount() - 1));
     }
 
     document.querySelector("[data-facility-action='all']").addEventListener("click", () => {
