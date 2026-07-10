@@ -467,8 +467,6 @@
     .grid-row time,
     .grid-row span {
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
@@ -482,8 +480,6 @@
 
     .grid-row strong {
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;
       font-size: 12px;
       font-weight: 800;
@@ -666,17 +662,23 @@
       .grid-head,
       .grid-row {
         display: grid;
-        grid-template-columns: 72px 64px 42px 58px 58px 66px;
+        grid-template-columns: 52px 49px 43px 45px 45px 59px;
         justify-content: space-between;
-        gap: 4px;
+        gap: 3px;
         align-items: center;
+      }
+
+      .grid-head {
+        font-size: 11px;
+        letter-spacing: 0;
       }
 
       .grid-row {
         min-height: 0;
-        padding: 10px 0;
+        padding: 9px 0;
         border-bottom: 1px solid #edf2ef;
-        font-size: 12px;
+        font-size: 11px;
+        letter-spacing: 0;
       }
 
       .grid-row:last-child {
@@ -685,18 +687,18 @@
 
       .grid-row time {
         color: var(--green-dark);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
       }
 
       .grid-row strong {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
       }
 
       .grid-row span:nth-child(3) {
         color: var(--muted);
-        font-size: 12px;
+        font-size: 11px;
         font-family: var(--sans);
         font-weight: 800;
         text-align: right;
@@ -706,7 +708,7 @@
       .grid-row span:nth-child(5),
       .grid-row span:nth-child(6) {
         color: var(--muted);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
         text-align: right;
       }
@@ -1027,7 +1029,11 @@
       if (!value) return "-";
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return "-";
-      return date.toLocaleTimeString();
+      return date.toLocaleTimeString("ko-KR", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit"
+      });
     }
 
     function formatRemaining(targetMs) {
@@ -1042,7 +1048,7 @@
     }
 
     function rowMarkup(row) {
-      const date = safeText(row.date || "-");
+      const date = safeText(String(row.date || "-").replace(/^\d{4}-/, ""));
       const name = safeText(row.name || "-");
       const room = safeText(row.room || "-");
       const timeText = safeText(row.time || "-");
@@ -1088,7 +1094,11 @@
       if (!value) return new Date().toLocaleTimeString();
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return String(value);
-      return date.toLocaleTimeString();
+      return date.toLocaleTimeString("ko-KR", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit"
+      });
     }
 
     function timestampOf(value) {
