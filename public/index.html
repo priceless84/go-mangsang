@@ -870,28 +870,11 @@
         </div>
       </div>
 
-      <div class="field">
-        <div class="field-title">
-          <span class="field-icon">⏱️</span>
-          <span class="field-name">감시 주기</span>
-        </div>
-        <div class="interval" aria-label="감시 주기 선택">
-          <button class="seg-btn" type="button" aria-pressed="false" data-interval="10">10초</button>
-          <button class="seg-btn" type="button" aria-pressed="false" data-interval="30">30초</button>
-          <button class="seg-btn active" type="button" aria-pressed="true" data-interval="60">1분</button>
-          <button class="seg-btn" type="button" aria-pressed="false" data-interval="300">5분</button>
-        </div>
-      </div>
-
       <div class="stats" aria-label="상태 신호">
         <div class="stat"><span>감지</span><strong id="activeCount">0</strong></div>
         <div class="stat"><span>조회</span><strong id="scanCount">1회</strong></div>
         <div class="stat"><span>대상</span><strong id="targetCount">0</strong></div>
         <div class="stat"><span>상태</span><strong id="monitorState" style="color: var(--green)">대기</strong></div>
-      </div>
-      <div class="mobile-reset-actions" aria-label="모바일 표시 초기화">
-        <button class="mobile-reset-btn" id="monitorResetBtn" type="button">감시조횟수 초기화</button>
-        <button class="mobile-reset-btn" id="historyResetBtn" type="button">감지기록 초기화</button>
       </div>
     </section>
 
@@ -972,7 +955,6 @@
     const chips = [...document.querySelectorAll(".chip")];
     const facilityActionButtons = [...document.querySelectorAll("[data-facility-action]")];
     const modeButtons = [...document.querySelectorAll("[data-date-mode]")];
-    const intervalButtons = [...document.querySelectorAll("[data-interval]")];
     const onlineStatus = document.querySelector("#onlineStatus");
 
     dateStart.min = startOpen;
@@ -1105,26 +1087,6 @@
       } catch {}
     }
 
-    async function saveRemoteInterval(sec) {
-      try {
-        const password = window.prompt("감시주기 변경 비밀번호를 입력하세요.");
-        if (password === null) return false;
-        const res = await fetch(CONFIG.configUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ intervalSec: Number(sec), password })
-        });
-        if (!res.ok) {
-          alert("비밀번호가 맞지 않아 감시주기를 변경하지 않았습니다.");
-          return false;
-        }
-        return true;
-      } catch {
-        alert("감시주기 변경 요청에 실패했습니다.");
-        return false;
-      }
-    }
-
     function normalizeServerItem(item) {
       const category = normalizeFacilityName(item.category || item.name);
       const room = String(item.roomName || item.room || "-").replace(/^자동차캠핑장\s*/, "");
@@ -1214,11 +1176,6 @@
         button.classList.toggle("active", isActive);
         button.setAttribute("aria-pressed", String(isActive));
       });
-      intervalButtons.forEach(button => {
-        const isActive = button.dataset.interval === interval;
-        button.classList.toggle("active", isActive);
-        button.setAttribute("aria-pressed", String(isActive));
-      });
       dateStart.disabled = mode !== "custom";
       dateEnd.disabled = mode !== "custom";
       paintList(activeRows, data, "현재 살아있는 취소분이 없습니다.");
@@ -1266,32 +1223,6 @@
         }
         render();
       });
-    });
-
-    intervalButtons.forEach(button => {
-      button.addEventListener("click", async () => {
-        const nextInterval = button.dataset.interval;
-        const ok = await saveRemoteInterval(nextInterval);
-        if (!ok) {
-          render();
-          return;
-        }
-        interval = nextInterval;
-        if (monitorTimer) startMonitor();
-        render();
-      });
-    });
-
-    document.querySelector("#monitorResetBtn").addEventListener("click", () => {
-      scanBase = scanCount;
-      localStorage.setItem("mangsangScanBase", String(scanBase));
-      render();
-    });
-
-    document.querySelector("#historyResetBtn").addEventListener("click", () => {
-      historyResetAt = Date.now();
-      firstSeen.clear();
-      render();
     });
 
     loadRemoteConfig().finally(() => {
