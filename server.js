@@ -15,7 +15,7 @@ const ACTIVE_FILE = path.join(DATA_DIR, "active.json");
 const MAX_EVENTS = 2000;
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || "6185";
 const STATE_SIGNAL_URL = process.env.STATE_SIGNAL_URL || "https://mangsang-alarm-dashboard.onrender.com/api/state";
-const LOCAL_REPORT_FRESH_MS = 30 * 1000;
+const LOCAL_REPORT_FRESH_MS = 180 * 1000;
 
 const state = {
   startedAt: new Date().toISOString(),
@@ -415,6 +415,7 @@ const server = http.createServer(async (req, res) => {
         active: activeForView(),
         events: state.events.slice().reverse(),
         config: state.config,
+        monitorError,
         status: {
           startedAt: state.startedAt,
           lastReportAt: state.lastReportAt,
