@@ -115,6 +115,10 @@ function readBody(req) {
 
 function normalizeCategoryName(value) {
   const name = String(value || "-").trim();
+  if (name === "1600") return "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5";
+  if (name === "1500") return "\ud5c8\ud5c8\ubc14\ub2e4";
+  if (name === "1400") return "\ub09c\ubc14\ub2e4";
+  if (name === "1300") return "\ub4e0\ubc14\ub2e4";
   if (name.includes("\uc790\ub3d9\ucc28") || name.includes("\ucea0\ud551")) {
     return "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5";
   }
@@ -122,6 +126,37 @@ function normalizeCategoryName(value) {
   if (name.includes("\ub09c\ubc14\ub2e4")) return "\ub09c\ubc14\ub2e4";
   if (name.includes("\ub4e0\ubc14\ub2e4")) return "\ub4e0\ubc14\ub2e4";
   return name;
+}
+
+function normalizeCategoryFromItem(item) {
+  const candidates = [
+    item.category,
+    item.categoryCode,
+    item.catCode,
+    item.catName,
+    item.fcltyCategory,
+    item.facility,
+    item.facilityName,
+    item.fcltyNm,
+    item.fcltyCode,
+    item.fcltyTyCode,
+    item.facilityCode,
+    item.facilityTypeCode,
+    item.roomName,
+    item.room_name,
+    item.room,
+    item.name,
+    item.nameCol,
+    item.message,
+    item.raw
+  ];
+  for (const value of candidates) {
+    const normalized = normalizeCategoryName(value);
+    if (["\ub4e0\ubc14\ub2e4", "\ub09c\ubc14\ub2e4", "\ud5c8\ud5c8\ubc14\ub2e4", "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5"].includes(normalized)) {
+      return normalized;
+    }
+  }
+  return normalizeCategoryName(item.category || item.name || item.facility || "-");
 }
 
 function normalizeRoomName(value, category) {
@@ -133,18 +168,7 @@ function normalizeRoomName(value, category) {
 }
 
 function normalizeItem(item) {
-  const category = normalizeCategoryName(
-    item.category ||
-    item.catName ||
-    item.fcltyCategory ||
-    item.facility ||
-    item.facilityName ||
-    item.fcltyNm ||
-    item.roomName ||
-    item.room_name ||
-    item.room ||
-    item.name
-  );
+  const category = normalizeCategoryFromItem(item);
   const roomName = normalizeRoomName(item.roomName || item.room_name || item.room || item.fcltyNm || item.nameCol, category);
   const id = String(
     item.id ||
