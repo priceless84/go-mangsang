@@ -133,7 +133,18 @@ function normalizeRoomName(value, category) {
 }
 
 function normalizeItem(item) {
-  const category = normalizeCategoryName(item.category || item.name || item.catName || item.fcltyCategory || item.facility);
+  const category = normalizeCategoryName(
+    item.category ||
+    item.catName ||
+    item.fcltyCategory ||
+    item.facility ||
+    item.facilityName ||
+    item.fcltyNm ||
+    item.roomName ||
+    item.room_name ||
+    item.room ||
+    item.name
+  );
   const roomName = normalizeRoomName(item.roomName || item.room_name || item.room || item.fcltyNm || item.nameCol, category);
   const id = String(
     item.id ||
@@ -236,15 +247,14 @@ function handleHeartbeatPayload(payload) {
 
   if (Array.isArray(heartbeat.canceling_items) || Array.isArray(heartbeat.canceling) || Array.isArray(heartbeat.active) || Array.isArray(heartbeat.canceling_details)) {
     state.active = uniqueActive;
-    state.events = uniqueActive;
     saveActive();
-    saveEvents();
   }
+  if (uniqueActive.length > 0) upsertEvents(uniqueActive);
   return uniqueActive;
 }
 
 function stateEventsForApi() {
-  return activeForView().map(eventForState);
+  return state.events.map(eventForState);
 }
 
 function heartbeatForApi() {
@@ -365,7 +375,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         active: activeForView(),
-        events: activeForView(),
+        events: state.events.slice().reverse(),
         config: state.config,
         status: {
           startedAt: state.startedAt,
