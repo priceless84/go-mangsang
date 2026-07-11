@@ -15,6 +15,7 @@ const ACTIVE_FILE = path.join(DATA_DIR, "active.json");
 const MAX_EVENTS = 2000;
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || "6185";
 const STATE_SIGNAL_URL = process.env.STATE_SIGNAL_URL || "https://mangsang-alarm-dashboard.onrender.com/api/state";
+const LOCAL_REPORT_FRESH_MS = 30 * 1000;
 
 const state = {
   startedAt: new Date().toISOString(),
@@ -39,6 +40,15 @@ const state = {
 
 let monitorError = "";
 let lastStateSyncAt = 0;
+
+function lastReportAgeMs() {
+  const time = new Date(state.lastReportAt || 0).getTime();
+  return Number.isFinite(time) ? Date.now() - time : Infinity;
+}
+
+function hasFreshLocalReport() {
+  return state.monitor.source === "reservation-console" && lastReportAgeMs() <= LOCAL_REPORT_FRESH_MS;
+}
 
 function normalizeIntervalSec(value) {
   const sec = Number(value);
@@ -296,6 +306,7 @@ function heartbeatForApi() {
 }
 
 async function syncStateSignal() {
+  if (hasFreshLocalReport()) return;
   if (!STATE_SIGNAL_URL || Date.now() - lastStateSyncAt < 5000) return;
   lastStateSyncAt = Date.now();
   try {
@@ -370,6 +381,9 @@ function sendStatic(req, res) {
 }
 
 function activeForView() {
+  if (state.monitor.source === "reservation-console" && lastReportAgeMs() > LOCAL_REPORT_FRESH_MS) {
+    return [];
+  }
   return state.active.slice().sort((a, b) =>
     a.date.localeCompare(b.date) ||
     a.category.localeCompare(b.category, "ko") ||
@@ -463,10 +477,8 @@ const server = http.createServer(async (req, res) => {
       state.lastRefreshAt = payload.refreshedAt || now;
       state.lastReportAt = now;
       const allRequestsFailed = Number(payload.totalRequests || 0) > 0 && Number(payload.failures || 0) >= Number(payload.totalRequests || 0);
-      if (active.length > 0 || !allRequestsFailed) {
-        state.active = active;
-        saveActive();
-      }
+      state.active = allRequestsFailed ? [] : active;
+      saveActive();
       state.monitor = {
         count: Number(payload.count || 0),
         totalRequests: Number(payload.totalRequests || 0),
