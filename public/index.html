@@ -1197,11 +1197,42 @@
 
     function normalizeFacilityName(value) {
       const name = String(value || "-").trim();
+      if (name === "1600") return "자동차캠핑장";
+      if (name === "1500") return "허허바다";
+      if (name === "1400") return "난바다";
+      if (name === "1300") return "든바다";
       if (name.includes("자동차") || name.includes("캠핑")) return "자동차캠핑장";
       if (name.includes("허허")) return "허허바다";
       if (name.includes("난바다")) return "난바다";
       if (name.includes("든바다")) return "든바다";
       return name;
+    }
+
+    function normalizeFacilityFromItem(item) {
+      const candidates = [
+        item.category,
+        item.categoryCode,
+        item.catCode,
+        item.name,
+        item.facility,
+        item.facilityName,
+        item.fcltyNm,
+        item.fcltyCode,
+        item.fcltyTyCode,
+        item.facilityCode,
+        item.facilityTypeCode,
+        item.roomName,
+        item.room,
+        item.message,
+        item.raw
+      ];
+      for (const value of candidates) {
+        const normalized = normalizeFacilityName(value);
+        if (["든바다", "난바다", "허허바다", "자동차캠핑장"].includes(normalized)) {
+          return normalized;
+        }
+      }
+      return normalizeFacilityName(item.category || item.name || "-");
     }
 
     function normalizeTime(value) {
@@ -1248,7 +1279,7 @@
     }
 
     function normalizeServerItem(item) {
-      const category = normalizeFacilityName(item.category || item.name || item.facility || item.facilityName || item.roomName || item.room);
+      const category = normalizeFacilityFromItem(item);
       const room = String(item.roomName || item.room || "-").replace(/^자동차캠핑장\s*/, "");
       const detectedAt = item.detectedAt || item.time || "";
       return {
