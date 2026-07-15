@@ -47,6 +47,49 @@ const UI_FIX_CSS = String.raw`
 }
 @media (min-width: 760px) { #activeRows .grid-head, #activeRows .grid-row, #firstRows.history-grid .grid-head, #firstRows.history-grid .grid-row { grid-template-columns: 96px 124px 78px 90px 116px minmax(170px, 1fr) !important; gap: 8px !important; } #firstRows.history-grid .grid-row .history-status { font-size: 13px !important; padding: 0 8px !important; } .facility-status-box { min-height: 64px; } }
 @media (max-width: 759px) { .facility-status-box { min-height: 42px; } }
+
+.codex-live-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid #cfe0d7;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(25, 48, 38, .08);
+}
+.codex-live-summary .summary-cell {
+  min-width: 0;
+  text-align: center;
+  border-right: 1px solid #e0ebe5;
+}
+.codex-live-summary .summary-cell:last-child { border-right: 0; }
+.codex-live-summary .summary-label {
+  display: block;
+  margin-bottom: 5px;
+  color: #52665c;
+  font-size: 12px;
+  font-weight: 800;
+}
+.codex-live-summary .summary-value {
+  display: block;
+  color: #071a33;
+  font-size: 20px;
+  font-weight: 950;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+@media (max-width: 520px) {
+  .codex-live-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 6px;
+    padding: 10px;
+  }
+  .codex-live-summary .summary-cell:nth-child(2) { border-right: 0; }
+  .codex-live-summary .summary-value { font-size: 17px; }
+}
+
 </style>
 <script id="codex-facility-status-box" defer>
 (() => {
@@ -71,7 +114,86 @@ const UI_FIX_CSS = String.raw`
     if (typeof window.render === "function") window.render();
   }
   function insertFacilityBox() { if (document.querySelector(".facility-status-box")) return; const titles = Array.from(document.querySelectorAll(".field-title")); const facilityTitle = titles.find(title => (title.textContent || "").includes("시설명")); if (!facilityTitle) return; const box = document.createElement("div"); box.className = "facility-status-box"; box.setAttribute("aria-label", "상태 표시 박스"); facilityTitle.insertAdjacentElement("afterend", box); }
-  function boot() { installStatusOverrides(); insertFacilityBox(); setTimeout(installStatusOverrides, 1000); }
+
+  const summaryState = { lastRefresh: '-', interval: '-', cancelCount: null };
+
+  function two(value) { return String(value).padStart(2, '0'); }
+
+  function formatClock(value) {
+    const date = value ? new Date(value) : new Date();
+    if (!Number.isFinite(date.getTime())) return '-';
+    return two(date.getHours()) + ':' + two(date.getMinutes()) + ':' + two(date.getSeconds());
+  }
+
+  function formatInterval(sec) {
+    const n = Number(sec);
+    if (!Number.isFinite(n) || n <= 0) return '-';
+    if (n < 60) return Math.round(n) + '초';
+    const min = n / 60;
+    return (Number.isInteger(min) ? min : min.toFixed(1).replace(/\.0$/, '')) + '분';
+  }
+
+  function countActiveRows() {
+    return Array.from(document.querySelectorAll('#activeRows .grid-row'))
+      .filter(row => (row.textContent || '').trim() && !(row.textContent || '').includes('없습니다'))
+      .length;
+  }
+
+  function ensureLiveSummaryBox() {
+    let box = document.getElementById('codexLiveSummary');
+    if (box) return box;
+    const topbar = document.querySelector('.topbar');
+    const app = document.querySelector('.app') || document.body;
+    box = document.createElement('section');
+    box.id = 'codexLiveSummary';
+    box.className = 'codex-live-summary';
+    box.innerHTML = [
+      '<div class="summary-cell"><span class="summary-label">현재시간</span><strong class="summary-value" data-summary="now">--:--:--</strong></div>',
+      '<div class="summary-cell"><span class="summary-label">취소</span><strong class="summary-value" data-summary="cancel">0건</strong></div>',
+      '<div class="summary-cell"><span class="summary-label">갱신시간</span><strong class="summary-value" data-summary="refresh">-</strong></div>',
+      '<div class="summary-cell"><span class="summary-label">갱신주기</span><strong class="summary-value" data-summary="interval">-</strong></div>'
+    ].join('');
+    if (topbar && topbar.parentNode) topbar.insertAdjacentElement('afterend', box);
+    else app.insertAdjacentElement('afterbegin', box);
+    return box;
+  }
+
+  function setSummaryValue(name, value) {
+    const el = document.querySelector('[data-summary="' + name + '"]');
+    if (el) el.textContent = value;
+  }
+
+  function renderLiveSummary() {
+    ensureLiveSummaryBox();
+    const count = summaryState.cancelCount == null ? countActiveRows() : summaryState.cancelCount;
+    setSummaryValue('now', formatClock());
+    setSummaryValue('cancel', count + '건');
+    setSummaryValue('refresh', summaryState.lastRefresh);
+    setSummaryValue('interval', summaryState.interval);
+  }
+
+  function requestSummaryStatus() {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/events?summary=' + Date.now(), true);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4 || xhr.status < 200 || xhr.status >= 300) return;
+        try {
+          const data = JSON.parse(xhr.responseText || '{}');
+          const active = Array.isArray(data.active) ? data.active : [];
+          const monitor = data.status && data.status.monitor ? data.status.monitor : data.monitor || {};
+          summaryState.cancelCount = active.length || Number(monitor.activeCount || 0) || countActiveRows();
+          const refreshed = data.status?.lastRefreshAt || data.lastRefreshAt || data.lastReportAt || data.heartbeat?.received_at;
+          summaryState.lastRefresh = refreshed ? formatClock(refreshed) : '-';
+          summaryState.interval = formatInterval(data.config?.intervalSec || monitor.intervalSec || data.intervalSec);
+          renderLiveSummary();
+        } catch (error) {}
+      };
+      xhr.send();
+    } catch (error) {}
+  }
+
+  function boot() { installStatusOverrides(); insertFacilityBox(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setTimeout(installStatusOverrides, 1000); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
 </script>`;
