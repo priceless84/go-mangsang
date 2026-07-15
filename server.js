@@ -373,8 +373,8 @@ function safeJoinPublic(urlPath) {
 function patchHtmlResponse(filePath, content) {
   if (path.basename(filePath) !== "index.html") return content;
   const html = content.toString("utf8");
-  if (html.includes("codex-ui-fixes") || !html.includes("</head>")) return html;
-  return html.replace("</head>", `undefined\n</head>`);
+  if (html.includes("codex-facility-status-box") || !html.includes("</head>")) return html;
+  return html.replace("</head>", `${UI_FIX_CSS}\n</head>`);
 }
 
 function sendStatic(req, res) {
