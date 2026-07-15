@@ -438,12 +438,36 @@ body #firstRows.history-grid .grid-row > * {
     const match = combined.match(/예약\s*완료|예약완료|선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점|예약\s*중|예약중|예약\s*가능|예약가능|예약\s*마감|예약마감|발생/i);
     return match ? normalizeStatusPhrase(match[0]) : "";
   }
+  function signalFlag(item, ...names) {
+    for (const name of names) {
+      const value = valueOf(item?.[name]).toUpperCase();
+      if (value) return value;
+    }
+    return "";
+  }
+  function signalStatusText(item) {
+    const combined = [item?.state, item?.status, item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.message, item?.event_type, item?.eventType].map(valueOf).filter(Boolean).join(" ");
+    const resveAt = signalFlag(item, "resveAt", "resve_at");
+    const resveYn = signalFlag(item, "resveYn", "resve_yn");
+    const preocpcYn = signalFlag(item, "preocpcYn", "preocpc_yn");
+    const imprtyYn = signalFlag(item, "imprtyYn", "imprty_yn");
+    const canclYn = signalFlag(item, "canclYn", "cancl_yn", "cancelYn", "cancel_yn");
+    if ((item?._activeSignalMatch || item?.myActive || item?.mine || item?.isMine) && (preocpcYn === "Y" || /선점|preocpc|active/i.test(combined))) return "나의 선점 시설";
+    if (/예약 *완료|예약완료|예약 *중|예약중|결제 *완료|결제완료|payment *complete|reserved/i.test(combined)) return "예약중";
+    if (/예약 *마감|예약마감|예약 *불가|예약불가|예약 *불가능|마감|불가|closed|unavailable/i.test(combined)) return "예약마감시설";
+    if (canclYn === "N") return "취소진행시설";
+    if (resveAt === "Y" || resveYn === "Y" || preocpcYn === "Y" || imprtyYn === "N" || canclYn === "Y" || /available|예약 *가능|예약가능/i.test(combined)) return "예약가능시설";
+    return "";
+  }
+
   function installStatusOverrides() {
     window.historyKind = function historyKind(item) { return isAvailable(item) ? "예약가능" : "취소중"; };
     window.historyKindClass = function historyKindClass(item) { return isAvailable(item) ? "history-kind available" : "history-kind canceling"; };
     window.statusText = function statusText(item) {
       const state = valueOf(item?.state), status = valueOf(item?.status), message = valueOf(item?.message);
       const combined = [state, status, message, item?.statusText, item?.status_text, item?.statusLabel, item?.status_label].map(valueOf).filter(Boolean).join(" ");
+      const signal = signalStatusText(item);
+      if (signal) return signal;
       const endMatch = combined.match(/종료\s*(?:→|->|-)?\s*([^,|]*)/);
       if (endMatch) {
         const tail = normalizeStatusPhrase(endMatch[1]);
@@ -714,7 +738,7 @@ body #firstRows.history-grid .grid-row > * {
 
   function historyRecordFromEvent(item, forcedKind) {
     const rawKind = forcedKind || valueOf(item?.kind) || valueOf(item?.event_type) || valueOf(item?.eventType);
-    const kind = /available|예약s*가능|예약가능|예약s*마감|예약마감|예약s*완료|예약완료|선점|예약s*중|예약중|Y/i.test(joined({ ...item, kind: rawKind })) ? "예약가능" : "취소중";
+    const kind = /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(joined({ ...item, kind: rawKind })) ? "예약가능" : "취소중";
     const detected = formatHistoryDetected(firstValueOf(item?.detected, item?.detected_at, item?.detectedAt, item?.received_at, item?.receivedAt, item?.time, item?.created_at, item?.createdAt, item?.updated_at, item?.updatedAt));
     const rawStatus = typeof statusText === "function" ? statusText(item) : firstValueOf(item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.state, item?.status);
     return normalizeHistoryRecord({
@@ -994,6 +1018,31 @@ function normalizeStatusPhraseServer(text) {
   return raw;
 }
 
+
+function signalFlagServer(item, ...names) {
+  for (const name of names) {
+    const value = valueOfServer(item?.[name]).toUpperCase();
+    if (value) return value;
+  }
+  return "";
+}
+
+function signalStatusTextServer(item, previous = {}) {
+  const merged = { ...previous, ...item };
+  const combined = [merged.state, merged.status, merged.statusText, merged.status_text, merged.statusLabel, merged.status_label, merged.message, merged.event_type, merged.eventType].map(valueOfServer).filter(Boolean).join(" ");
+  const resveAt = signalFlagServer(merged, "resveAt", "resve_at");
+  const resveYn = signalFlagServer(merged, "resveYn", "resve_yn");
+  const preocpcYn = signalFlagServer(merged, "preocpcYn", "preocpc_yn");
+  const imprtyYn = signalFlagServer(merged, "imprtyYn", "imprty_yn");
+  const canclYn = signalFlagServer(merged, "canclYn", "cancl_yn", "cancelYn", "cancel_yn");
+  if ((merged._activeSignalMatch || merged.myActive || merged.mine || merged.isMine) && (preocpcYn === "Y" || /선점|preocpc|active/i.test(combined))) return "나의 선점 시설";
+  if (/예약 *완료|예약완료|예약 *중|예약중|결제 *완료|결제완료|payment *complete|reserved/i.test(combined)) return "예약중";
+  if (/예약 *마감|예약마감|예약 *불가|예약불가|예약 *불가능|마감|불가|closed|unavailable/i.test(combined)) return "예약마감시설";
+  if (canclYn === "N") return "취소진행시설";
+  if (resveAt === "Y" || resveYn === "Y" || preocpcYn === "Y" || imprtyYn === "N" || canclYn === "Y" || /available|예약 *가능|예약가능/i.test(combined)) return "예약가능시설";
+  return "";
+}
+
 function eventStatusText(item, previous = {}) {
   const combined = [
     item.state,
@@ -1009,6 +1058,8 @@ function eventStatusText(item, previous = {}) {
     previous.statusText,
     previous.message
   ].map(valueOfServer).filter(Boolean).join(" ");
+  const signal = signalStatusTextServer(item, previous);
+  if (signal) return signal;
   const ended = combined.match(/종료\s*(?:→|->|-)?\s*([^,|]*)/);
   if (ended) {
     const tail = normalizeStatusPhraseServer(ended[1]);
@@ -1027,7 +1078,7 @@ function normalizeItem(item) {
   const roomName = normalizeRoomName(item.roomName || item.room_name || item.room || item.fcltyNm || item.nameCol, category);
   const capacity = capacityOf({ ...item, category, facility: category, room: roomName, roomName });
   const displayRoomName = roomWithCapacity(roomName, { ...item, category, facility: category, capacity });
-  const rawStatus = String(item.status || item.canclYn || item.state || "").trim();
+  const rawStatus = String(item.status || item.canclYn || item.cancelYn || item.state || "").trim();
   const rawEventType = String(item.event_type || item.eventType || "").trim();
   const rawMessage = String(item.message || "").trim();
   const rawStatusText = String(item.statusText || item.status_text || item.statusLabel || item.status_label || "").trim();
@@ -1036,7 +1087,7 @@ function normalizeItem(item) {
   const normalizedStatus = rawStatus || (inferredEventType === "available" ? "Y" : "N");
   const id = String(item.id || [item.date || item.target_date || item.beginDate || item.resveBeginDe || "", category, roomName, item.fcltyCode || "", item.fcltyTyCode || "", item.resveNoCode || ""].join("|"));
   const detectedAt = item.detectedAt || item.detected_at || item.time || item.detected || item.detectedTime || item.received_at || new Date().toISOString();
-  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName: displayRoomName, capacity, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, statusText: rawStatusText, message: rawMessage, detectedAt };
+  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName: displayRoomName, capacity, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, statusText: rawStatusText, message: rawMessage, resveAt: String(item.resveAt || item.resve_at || ""), resveYn: String(item.resveYn || item.resve_yn || ""), preocpcYn: String(item.preocpcYn || item.preocpc_yn || ""), imprtyYn: String(item.imprtyYn || item.imprty_yn || ""), canclYn: String(item.canclYn || item.cancl_yn || item.cancelYn || item.cancel_yn || ""), detectedAt };
 }
 
 function parseDetailText(text) {
@@ -1275,6 +1326,11 @@ function upsertEvents(items) {
       capacity: item.capacity || previous.capacity,
       roomName: roomWithCapacity(previous.roomName || item.roomName, item.capacity ? item : previous),
       message: item.message || previous.message,
+      resveAt: item.resveAt || previous.resveAt,
+      resveYn: item.resveYn || previous.resveYn,
+      preocpcYn: item.preocpcYn || previous.preocpcYn,
+      imprtyYn: item.imprtyYn || previous.imprtyYn,
+      canclYn: item.canclYn || previous.canclYn,
       detectedAt: previous.detectedAt || item.detectedAt
     });
   }
