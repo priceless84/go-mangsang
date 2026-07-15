@@ -979,7 +979,7 @@ function normalizeItem(item) {
   const normalizedStatus = rawStatus || (inferredEventType === "available" ? "Y" : "N");
   const id = String(item.id || [item.date || item.target_date || item.beginDate || item.resveBeginDe || "", category, roomName, item.fcltyCode || "", item.fcltyTyCode || "", item.resveNoCode || ""].join("|"));
   const detectedAt = item.detectedAt || item.detected_at || item.time || item.detected || item.detectedTime || item.received_at || new Date().toISOString();
-  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName: displayRoomName, capacity, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, statusText: stateText, message: rawMessage, detectedAt };
+  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName: displayRoomName, capacity, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, statusText: rawStatusText, message: rawMessage, detectedAt };
 }
 
 function parseDetailText(text) {
@@ -1094,25 +1094,109 @@ function heartbeatForApi() {
 }
 
 
+function decodeHtmlText(text) {
+  return String(text || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseReferenceDashboardHtml(html) {
+  const raw = String(html || "");
+  const receivedText = decodeHtmlText((raw.match(/<div class="info-label">\s*마지막\s*<\/div>\s*<div class="info-value">([\s\S]*?)<\/div>/) || [])[1]) || new Date().toISOString();
+  const cancelingBlock = (raw.match(/id="cancelingNow"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || "";
+  const rows = [];
+  for (const match of cancelingBlock.matchAll(/<tr[\s\S]*?>([\s\S]*?)<\/tr>/g)) {
+    const cells = Array.from(match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)).map(cell => decodeHtmlText(cell[1]));
+    if (cells.length < 5) continue;
+    rows.push({
+      target_date: cells[0],
+      date: cells[0],
+      facility: cells[1],
+      category: cells[1],
+      room: cells[2],
+      room_name: cells[2],
+      detected: cells[3],
+      time: cells[3],
+      expected: cells[4],
+      remain: cells[5] || "",
+      status: "N",
+      event_type: "canceling",
+      state: "취소 진행중",
+      statusText: "취소 진행중",
+      message: [cells[0], cells[1], cells[2], "취소 진행중"].join(" ")
+    });
+  }
+  return {
+    heartbeat: {
+      received_at: new Date().toISOString(),
+      status: "running",
+      client: "mangsang-dashboard-html",
+      source_received_at: receivedText,
+      canceling_count: rows.length,
+      canceling_items: rows,
+      available_count: 0,
+      available_items: []
+    }
+  };
+}
+
+async function syncStateSignalFromHtml() {
+  const pageUrl = "https://mangsang-alarm-dashboard.onrender.com/";
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4500);
+  try {
+    const response = await fetch(pageUrl, {
+      cache: "no-store",
+      signal: controller.signal,
+      headers: { "User-Agent": "go-mangsang-dashboard-html-sync/1.0" }
+    });
+    clearTimeout(timer);
+    if (!response.ok) return false;
+    const html = await response.text();
+    const payload = parseReferenceDashboardHtml(html);
+    if (payload.heartbeat && Array.isArray(payload.heartbeat.canceling_items)) {
+      handleHeartbeatPayload(payload);
+      return true;
+    }
+  } catch (error) {
+    try { clearTimeout(timer); } catch (_) {}
+  }
+  return false;
+}
+
+
 async function syncStateSignal() {
   if (hasFreshLocalReport()) return;
   if (!STATE_SIGNAL_URL || Date.now() - lastStateSyncAt < 5000) return;
   lastStateSyncAt = Date.now();
+  let synced = false;
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2500);
+    const timer = setTimeout(() => controller.abort(), 3500);
     const response = await fetch(STATE_SIGNAL_URL, {
       cache: "no-store",
       signal: controller.signal,
       headers: { "User-Agent": "go-mangsang-state-sync/1.0" }
     });
     clearTimeout(timer);
-    if (!response.ok) return;
-    const payload = await response.json();
-    if (payload && payload.heartbeat) {
-      handleHeartbeatPayload(payload);
+    if (response.ok) {
+      const payload = await response.json();
+      if (payload && payload.heartbeat) {
+        handleHeartbeatPayload(payload);
+        synced = true;
+      }
     }
   } catch (error) {}
+  if (!synced || activeForView().length === 0) {
+    await syncStateSignalFromHtml();
+  }
 }
 
 
