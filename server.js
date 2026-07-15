@@ -90,12 +90,12 @@ const UI_FIX_CSS = String.raw`
 }
 @media (max-width: 520px) {
   .codex-live-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 6px;
-    padding: 10px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    padding: 10px 8px;
   }
-  .codex-live-summary .summary-cell:nth-child(2) { border-right: 0; }
-  .codex-live-summary .summary-value { font-size: 17px; }
+  .codex-live-summary .summary-cell:nth-child(2) { border-right: 1px solid #e0ebe5; }
+  .codex-live-summary .summary-value { font-size: 15px; }
 }
 
 
@@ -256,7 +256,7 @@ body .grid-row span.remaining-soon {
   }
   function insertFacilityBox() { if (document.querySelector(".facility-status-box")) return; const titles = Array.from(document.querySelectorAll(".field-title")); const facilityTitle = titles.find(title => (title.textContent || "").includes("시설명")); if (!facilityTitle) return; const box = document.createElement("div"); box.className = "facility-status-box"; box.setAttribute("aria-label", "상태 표시 박스"); facilityTitle.insertAdjacentElement("afterend", box); }
 
-  const summaryState = { lastRefresh: '-', interval: '-', cancelCount: null };
+  const summaryState = { lastRefresh: '-', interval: '-', intervalSec: 60, lastRefreshMs: 0, cancelCount: null };
 
   function two(value) { return String(value).padStart(2, '0'); }
 
@@ -266,12 +266,17 @@ body .grid-row span.remaining-soon {
     return two(date.getHours()) + ':' + two(date.getMinutes()) + ':' + two(date.getSeconds());
   }
 
-  function formatInterval(sec) {
+  function normalizeInterval(sec) {
     const n = Number(sec);
-    if (!Number.isFinite(n) || n <= 0) return '-';
-    if (n < 60) return Math.round(n) + '초';
-    const min = n / 60;
-    return (Number.isInteger(min) ? min : min.toFixed(1).replace(/\.0$/, '')) + '분';
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : 60;
+  }
+
+  function remainingRefreshSeconds() {
+    const interval = normalizeInterval(summaryState.intervalSec);
+    const base = Number(summaryState.lastRefreshMs || 0);
+    if (!base) return interval;
+    const next = base + interval * 1000;
+    return Math.max(0, Math.min(interval, Math.ceil((next - Date.now()) / 1000)));
   }
 
   function countActiveRows() {
@@ -292,7 +297,7 @@ body .grid-row span.remaining-soon {
       '<div class="summary-cell"><span class="summary-label">현재시간</span><strong class="summary-value" data-summary="now">--:--:--</strong></div>',
       '<div class="summary-cell"><span class="summary-label">취소</span><strong class="summary-value" data-summary="cancel">0건</strong></div>',
       '<div class="summary-cell"><span class="summary-label">갱신시간</span><strong class="summary-value" data-summary="refresh">-</strong></div>',
-      '<div class="summary-cell"><span class="summary-label">갱신주기</span><strong class="summary-value" data-summary="interval">-</strong></div>'
+      '<div class="summary-cell"><span class="summary-label">남은초</span><strong class="summary-value" data-summary="interval">60초</strong></div>'
     ].join('');
     if (controls) controls.insertAdjacentElement('beforeend', box);
     else app.insertAdjacentElement('afterbegin', box);
@@ -310,7 +315,7 @@ body .grid-row span.remaining-soon {
     setSummaryValue('now', formatClock());
     setSummaryValue('cancel', count + '건');
     setSummaryValue('refresh', summaryState.lastRefresh);
-    setSummaryValue('interval', summaryState.interval);
+    setSummaryValue('interval', remainingRefreshSeconds() + '초');
   }
 
   function requestSummaryStatus() {
@@ -326,7 +331,9 @@ body .grid-row span.remaining-soon {
           summaryState.cancelCount = active.length || Number(monitor.activeCount || 0) || countActiveRows();
           const refreshed = data.status?.lastRefreshAt || data.lastRefreshAt || data.lastReportAt || data.heartbeat?.received_at;
           summaryState.lastRefresh = refreshed ? formatClock(refreshed) : '-';
-          summaryState.interval = formatInterval(data.config?.intervalSec || monitor.intervalSec || data.intervalSec);
+          const refreshDate = refreshed ? new Date(refreshed) : null;
+          summaryState.lastRefreshMs = refreshDate && Number.isFinite(refreshDate.getTime()) ? refreshDate.getTime() : Date.now();
+          summaryState.intervalSec = normalizeInterval(data.config?.intervalSec || monitor.intervalSec || data.intervalSec);
           renderLiveSummary();
         } catch (error) {}
       };
