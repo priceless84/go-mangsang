@@ -970,6 +970,74 @@
     }
   }
 </style>
+
+<style id="codex-history-status-v3">
+  .history-grid .grid-head,
+  .history-grid .grid-row {
+    grid-template-columns: 50px 57px 42px 48px 86px minmax(112px, 1fr) !important;
+    justify-content: stretch !important;
+    gap: 4px !important;
+  }
+
+  .history-grid .grid-head span:nth-child(5),
+  .history-grid .grid-row span:nth-child(5),
+  .history-grid .grid-head span:nth-child(6),
+  .history-grid .grid-row span:nth-child(6) {
+    grid-column: auto !important;
+    text-align: center !important;
+  }
+
+  .history-grid .grid-row .history-kind {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 3px 8px;
+    border: 0 !important;
+    border-radius: 999px;
+    background: #fff3d6 !important;
+    color: #9a5b00 !important;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .history-grid .grid-row .history-kind.available {
+    background: #dff7ea !important;
+    color: #0f7a45 !important;
+  }
+
+  .history-grid .grid-row .history-status {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 4px;
+    border: 0 !important;
+    background: transparent !important;
+    color: #17211b !important;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.25;
+    white-space: normal;
+    word-break: keep-all;
+  }
+
+  @media (min-width: 760px) {
+    .history-grid .grid-head,
+    .history-grid .grid-row {
+      grid-template-columns: 96px 124px 78px 90px 116px minmax(170px, 1fr) !important;
+      gap: 8px !important;
+    }
+
+    .history-grid .grid-row .history-status {
+      font-size: 13px;
+      padding: 0 8px;
+    }
+  }
+</style>
 </head>
 
 <body>
@@ -1163,6 +1231,7 @@
             <span>시설</span>
             <span>객실</span>
             <span>감지</span>
+            <span>종류</span>
             <span>상태</span>
           </div>
         `;
@@ -1234,10 +1303,27 @@
       `;
     }
 
+    function historyKind(row) {
+      const type = String(row.eventType || row.event_type || "").toLowerCase();
+      const raw = `${row.status || ""} ${row.state || ""} ${row.message || ""}`;
+      if (type.includes("available") || raw.includes("예약 가능") || raw.includes("예약가능")) return "예약가능";
+      return "취소진행중";
+    }
+
+    function historyKindClass(row) {
+      return historyKind(row) === "예약가능" ? "available" : "canceling";
+    }
+
     function statusText(row) {
       const raw = String(row.status || row.state || "").trim();
-      if (raw === "Y" || raw.includes("가능") || raw.includes("종료")) return "해제";
-      return "취소";
+      const message = String(row.message || "").trim();
+      if (raw && raw !== "Y" && raw !== "N") return raw;
+      if (message.includes("종료")) {
+        const match = message.match(/종료s*[→>-]s*([^|]+)/);
+        return match ? `종료 → ${match[1].trim()}` : "종료";
+      }
+      if (raw === "Y" || historyKind(row) === "예약가능") return "종료 → 예약 가능";
+      return "발생";
     }
 
     function historyRowMarkup(row) {
@@ -1245,6 +1331,8 @@
       const name = safeText(row.name || "-");
       const room = safeText(row.room || "-");
       const timeText = safeText(row.time || "-");
+      const kind = safeText(historyKind(row));
+      const kindClass = safeText(historyKindClass(row));
       const state = safeText(statusText(row));
       return `
         <div class="grid-row">
@@ -1252,7 +1340,8 @@
           <strong>${name}</strong>
           <span>${room}</span>
           <span>${timeText}</span>
-          <span>${state}</span>
+          <span class="history-kind ${kindClass}">${kind}</span>
+          <span class="history-status">${state}</span>
         </div>
       `;
     }
@@ -1372,6 +1461,13 @@
       const category = normalizeFacilityFromItem(item);
       const room = String(item.roomName || item.room || "-").replace(/^자동차캠핑장\s*/, "");
       const detectedAt = item.detectedAt || item.time || "";
+      const status = String(item.status || item.state || "");
+      const message = String(item.message || "");
+      const eventType = String(
+        item.eventType ||
+        item.event_type ||
+        ((status + " " + message).includes("예약 가능") || (status + " " + message).includes("예약가능") ? "available" : "canceling")
+      );
       return {
         date: String(item.date || "-"),
         name: category,
@@ -1381,7 +1477,11 @@
         fcltyCode: String(item.fcltyCode || ""),
         fcltyTyCode: String(item.fcltyTyCode || ""),
         resveNoCode: String(item.resveNoCode || ""),
-        status: String(item.status || item.state || "")
+        status,
+        state: String(item.state || status),
+        eventType,
+        event_type: eventType,
+        message
       };
     }
 
