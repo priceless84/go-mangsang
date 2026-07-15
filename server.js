@@ -16,37 +16,36 @@ const MAX_EVENTS = 2000;
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || "6185";
 const STATE_SIGNAL_URL = process.env.STATE_SIGNAL_URL || "https://mangsang-alarm-dashboard.onrender.com/api/state";
 const LOCAL_REPORT_FRESH_MS = 180 * 1000;
-const UI_FIX_CSS = [
-  "<style id="codex-ui-fixes">",
-  ".grid-row .remaining-soon, .grid-row span.remaining-soon { color: #003b8f !important; font-weight: 950; }",
-  ".facility-status-box { width: 100%; min-height: 54px; border-radius: 2px; background: #000; margin: 0 0 8px; }",
-  ".facility-status-box[hidden] { display: none !important; }",
-  ".history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 96px 104px 64px 76px minmax(140px, 1fr) !important; justify-content: stretch !important; gap: 4px !important; }",
-  ".history-grid .grid-head span:nth-child(5), .history-grid .grid-row span:nth-child(5) { grid-column: 5 !important; text-align: center !important; }",
-  ".history-grid .grid-row span:nth-child(5) { display: flex !important; align-items: center; justify-content: center; min-height: 34px; padding: 0 8px; border: 1px solid #0b3d4b; background: #1f6f8a; color: #fff !important; font-family: var(--sans); font-size: 14px; font-weight: 900; white-space: normal; }",
-  "@media (min-width: 760px) { .history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 120px 150px 92px 110px minmax(190px, 1fr) !important; gap: 8px !important; } .facility-status-box { min-height: 64px; } }",
-  "@media (max-width: 759px) { .history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 50px 57px 42px 55px minmax(112px, 1fr) !important; } .history-grid .grid-row span:nth-child(5) { min-height: 34px; font-size: 13px; padding: 0 6px; } .facility-status-box { min-height: 42px; } }",
-  "</style>",
-  "<script id="codex-facility-status-box" defer>",
-  "(() => {",
-  "  function insertFacilityBox() {",
-  "    if (document.querySelector('.facility-status-box')) return;",
-  "    const titles = Array.from(document.querySelectorAll('.field-title'));",
-  "    const facilityTitle = titles.find(title => (title.textContent || '').includes('시설명'));",
-  "    if (!facilityTitle) return;",
-  "    const box = document.createElement('div');",
-  "    box.className = 'facility-status-box';",
-  "    box.setAttribute('aria-label', '상태 표시 박스');",
-  "    facilityTitle.insertAdjacentElement('afterend', box);",
-  "  }",
-  "  if (document.readyState === 'loading') {",
-  "    document.addEventListener('DOMContentLoaded', insertFacilityBox, { once: true });",
-  "  } else {",
-  "    insertFacilityBox();",
-  "  }",
-  "})();",
-  "</script>"
-].join("\n");
+const UI_FIX_CSS = String.raw`
+<style id="codex-ui-fixes">
+.grid-row .remaining-soon, .grid-row span.remaining-soon { color: #003b8f !important; font-weight: 950; }
+.facility-status-box { width: 100%; min-height: 54px; border-radius: 2px; background: #000; margin: 0 0 8px; }
+.facility-status-box[hidden] { display: none !important; }
+.history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 96px 104px 64px 76px minmax(140px, 1fr) !important; justify-content: stretch !important; gap: 4px !important; }
+.history-grid .grid-head span:nth-child(5), .history-grid .grid-row span:nth-child(5) { grid-column: 5 !important; text-align: center !important; }
+.history-grid .grid-row span:nth-child(5) { display: flex !important; align-items: center; justify-content: center; min-height: 34px; padding: 0 8px; border: 1px solid #0b3d4b; background: #1f6f8a; color: #fff !important; font-family: var(--sans); font-size: 14px; font-weight: 900; white-space: normal; }
+@media (min-width: 760px) { .history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 120px 150px 92px 110px minmax(190px, 1fr) !important; gap: 8px !important; } .facility-status-box { min-height: 64px; } }
+@media (max-width: 759px) { .history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 50px 57px 42px 55px minmax(112px, 1fr) !important; } .history-grid .grid-row span:nth-child(5) { min-height: 34px; font-size: 13px; padding: 0 6px; } .facility-status-box { min-height: 42px; } }
+</style>
+<script id="codex-facility-status-box" defer>
+(() => {
+  function insertFacilityBox() {
+    if (document.querySelector('.facility-status-box')) return;
+    const titles = Array.from(document.querySelectorAll('.field-title'));
+    const facilityTitle = titles.find(title => (title.textContent || '').includes('시설명'));
+    if (!facilityTitle) return;
+    const box = document.createElement('div');
+    box.className = 'facility-status-box';
+    box.setAttribute('aria-label', '상태 표시 박스');
+    facilityTitle.insertAdjacentElement('afterend', box);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', insertFacilityBox, { once: true });
+  } else {
+    insertFacilityBox();
+  }
+})();
+</script>`;
 
 const state = {
   startedAt: new Date().toISOString(),
