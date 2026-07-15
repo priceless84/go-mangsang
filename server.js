@@ -231,6 +231,85 @@ body .grid-row span.remaining-soon {
   body #firstRows.history-grid .grid-row > * { font-size: 13px !important; }
 }
 
+
+/* readability and compact controls pass */
+body .panel.controls {
+  gap: 6px !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+body .panel.controls .field-title,
+body .panel.controls h2,
+body .panel.controls h3 {
+  margin-bottom: 4px !important;
+  line-height: 1.15 !important;
+}
+body .panel.controls button,
+body .panel.controls .chip,
+body .panel.controls label,
+body .panel.controls .segmented button,
+body .panel.controls .date-mode button,
+body .panel.controls input[type="button"] {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+body .panel.controls input[type="date"],
+body .panel.controls input:not([type]),
+body .panel.controls select {
+  min-height: 36px !important;
+  height: 36px !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+body #activeRows .grid-head,
+body #activeRows .grid-row,
+body #firstRows.history-grid .grid-head,
+body #firstRows.history-grid .grid-row {
+  grid-template-columns: 43px 56px 42px 46px 50px minmax(60px, 1fr) !important;
+  gap: 2px !important;
+}
+body #activeRows .grid-head > *,
+body #activeRows .grid-row > *,
+body #firstRows.history-grid .grid-head > *,
+body #firstRows.history-grid .grid-row > * {
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1.18 !important;
+  letter-spacing: 0 !important;
+}
+body #activeRows .grid-row .remaining-soon,
+body #activeRows .grid-row span.remaining-soon,
+body .grid-row .remaining-soon,
+body .grid-row span.remaining-soon {
+  font-size: 12px !important;
+  font-weight: 950 !important;
+}
+body #firstRows.history-grid .grid-row .history-kind,
+body #firstRows.history-grid .grid-row span:nth-child(5).history-kind,
+body #firstRows.history-grid .grid-row .history-status {
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+@media (max-width: 390px) {
+  body #activeRows .grid-head,
+  body #activeRows .grid-row,
+  body #firstRows.history-grid .grid-head,
+  body #firstRows.history-grid .grid-row {
+    grid-template-columns: 40px 52px 40px 43px 47px minmax(52px, 1fr) !important;
+    gap: 1px !important;
+  }
+  body #activeRows .grid-head > *,
+  body #activeRows .grid-row > *,
+  body #firstRows.history-grid .grid-head > *,
+  body #firstRows.history-grid .grid-row > *,
+  body #firstRows.history-grid .grid-row .history-kind,
+  body #firstRows.history-grid .grid-row span:nth-child(5).history-kind,
+  body #firstRows.history-grid .grid-row .history-status {
+    font-size: 11px !important;
+  }
+}
 </style>
 <script id="codex-facility-status-box" defer>
 (() => {
@@ -297,7 +376,7 @@ body .grid-row span.remaining-soon {
       '<div class="summary-cell"><span class="summary-label">현재시간</span><strong class="summary-value" data-summary="now">--:--:--</strong></div>',
       '<div class="summary-cell"><span class="summary-label">취소</span><strong class="summary-value" data-summary="cancel">0건</strong></div>',
       '<div class="summary-cell"><span class="summary-label">갱신시간</span><strong class="summary-value" data-summary="refresh">-</strong></div>',
-      '<div class="summary-cell"><span class="summary-label">남은초</span><strong class="summary-value" data-summary="interval">60초</strong></div>'
+      '<div class="summary-cell"><span class="summary-label">갱신주기</span><strong class="summary-value" data-summary="interval">60초</strong></div>'
     ].join('');
     if (controls) controls.insertAdjacentElement('beforeend', box);
     else app.insertAdjacentElement('afterbegin', box);
