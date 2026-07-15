@@ -379,6 +379,9 @@ body #firstRows.history-grid .grid-row > * {
   const NANBADA_CAPACITY_MAP = {
     "101": "8", "102": "6", "103": "4", "104": "4", "105": "6", "106": "10", "107": "4", "108": "4", "109": "8", "110": "6", "111": "4", "112": "4", "113": "8", "114": "6", "115": "10"
   };
+  const HEOHEOBADA_CAPACITY_MAP = {
+    "101": "10", "102": "8", "103": "4", "104": "4", "105": "6", "106": "4", "107": "4", "108": "10"
+  };
   function roomNumberOf(room) {
     const match = valueOf(room).match(/(\d+)\s*번?/);
     return match ? match[1] : "";
@@ -388,6 +391,7 @@ body #firstRows.history-grid .grid-row > * {
     const roomNo = roomNumberOf(item?.room || item?.roomName || item?.room_name || item?.name || item?.raw);
     if (/든바다/.test(facility)) return DEUNBADA_CAPACITY_MAP[roomNo] || "";
     if (/난바다/.test(facility)) return NANBADA_CAPACITY_MAP[roomNo] || "";
+    if (/허허바다/.test(facility)) return HEOHEOBADA_CAPACITY_MAP[roomNo] || "";
     return "";
   }
   function capacityOf(item) {
@@ -886,6 +890,9 @@ const DEUNBADA_CAPACITY_MAP_SERVER = {
 const NANBADA_CAPACITY_MAP_SERVER = {
   "101": "8", "102": "6", "103": "4", "104": "4", "105": "6", "106": "10", "107": "4", "108": "4", "109": "8", "110": "6", "111": "4", "112": "4", "113": "8", "114": "6", "115": "10"
 };
+const HEOHEOBADA_CAPACITY_MAP_SERVER = {
+  "101": "10", "102": "8", "103": "4", "104": "4", "105": "6", "106": "4", "107": "4", "108": "10"
+};
 
 function roomNumberOfServer(room) {
   const match = valueOfServer(room).match(/(\d+)\s*번?/);
@@ -897,6 +904,7 @@ function mappedCapacityServer(item) {
   const roomNo = roomNumberOfServer(item.room || item.roomName || item.room_name || item.name || item.raw);
   if (/든바다/.test(facility)) return DEUNBADA_CAPACITY_MAP_SERVER[roomNo] || "";
   if (/난바다/.test(facility)) return NANBADA_CAPACITY_MAP_SERVER[roomNo] || "";
+  if (/허허바다/.test(facility)) return HEOHEOBADA_CAPACITY_MAP_SERVER[roomNo] || "";
   return "";
 }
 
