@@ -732,6 +732,24 @@ function normalizeRoomName(value, category) {
 }
 
 
+function valueOfServer(v) {
+  return String(v || "").trim();
+}
+
+function capacityOf(item) {
+  const direct = valueOfServer(item.capacity || item.people || item.person || item.persons || item.headcount || item.cnt || item.inwon || item.roomCapacity || item.capacityText);
+  const text = direct || [item.roomName, item.room_name, item.room, item.name, item.message, item.raw].map(valueOfServer).join(" ");
+  const match = text.match(/(\d+)\s*(?:인|명|people|persons?)/i);
+  return match ? match[1] : "";
+}
+
+function roomWithCapacity(room, item) {
+  const base = valueOfServer(room).replace(/\s*\(\d+\s*인\)\s*$/, "");
+  const capacity = capacityOf(item || {});
+  return base && capacity ? base + "(" + capacity + "인)" : base;
+}
+
+
 function normalizeItem(item) {
   const category = normalizeCategoryFromItem(item);
   const roomName = normalizeRoomName(item.roomName || item.room_name || item.room || item.fcltyNm || item.nameCol, category);
