@@ -329,10 +329,73 @@ body #firstRows.history-grid .grid-row {
   min-height: 33px !important;
   align-items: center !important;
 }
+
+/* show capacity beside room without horizontal scroll */
+body #activeRows .grid-head,
+body #activeRows .grid-row,
+body #firstRows.history-grid .grid-head,
+body #firstRows.history-grid .grid-row {
+  grid-template-columns: 39px 50px 64px 42px 44px minmax(52px, 1fr) !important;
+  gap: 2px !important;
+}
+body #activeRows .grid-head > *,
+body #activeRows .grid-row > *,
+body #firstRows.history-grid .grid-head > *,
+body #firstRows.history-grid .grid-row > * {
+  font-size: 11.5px !important;
+  letter-spacing: 0 !important;
+}
+@media (max-width: 390px) {
+  body #activeRows .grid-head,
+  body #activeRows .grid-row,
+  body #firstRows.history-grid .grid-head,
+  body #firstRows.history-grid .grid-row {
+    grid-template-columns: 38px 49px 63px 41px 43px minmax(50px, 1fr) !important;
+    gap: 1px !important;
+  }
+  body #activeRows .grid-head > *,
+  body #activeRows .grid-row > *,
+  body #firstRows.history-grid .grid-head > *,
+  body #firstRows.history-grid .grid-row > * {
+    font-size: 11px !important;
+  }
+}
+@media (min-width: 760px) {
+  body #activeRows .grid-head,
+  body #activeRows .grid-row,
+  body #firstRows.history-grid .grid-head,
+  body #firstRows.history-grid .grid-row {
+    grid-template-columns: 96px 124px 112px 90px 116px minmax(154px, 1fr) !important;
+    gap: 8px !important;
+  }
+}
 </style>
 <script id="codex-facility-status-box" defer>
 (() => {
   function valueOf(v) { return String(v || "").trim(); }
+  function capacityOf(item) {
+    const direct = valueOf(item?.capacity || item?.people || item?.person || item?.persons || item?.headcount || item?.cnt || item?.inwon || item?.roomCapacity || item?.capacityText);
+    const text = direct || [item?.roomName, item?.room_name, item?.room, item?.name, item?.message, item?.raw].map(valueOf).join(" ");
+    const match = text.match(/(\d+)\s*(?:인|명|people|persons?)/i);
+    return match ? match[1] : "";
+  }
+  function roomWithCapacity(room, item) {
+    const base = valueOf(room).replace(/\s*\(\d+\s*인\)\s*$/, "");
+    const capacity = capacityOf(item);
+    return base && capacity ? base + "(" + capacity + "인)" : base;
+  }
+  function applyRoomCapacityLabels() {
+    Array.from(document.querySelectorAll('#activeRows .grid-row, #firstRows.history-grid .grid-row')).forEach(row => {
+      const cells = row.children;
+      if (!cells || cells.length < 3) return;
+      const roomCell = cells[2];
+      const current = valueOf(roomCell.textContent);
+      if (!current || /\(\d+\s*인\)/.test(current)) return;
+      const rowText = valueOf(row.textContent);
+      const match = rowText.match(/(\d+)\s*(?:인|명)/);
+      if (match) roomCell.textContent = current + "(" + match[1] + "인)";
+    });
+  }
   function joined(item) { return [item?.event_type, item?.eventType, item?.kind, item?.status, item?.state, item?.message].map(valueOf).join(" "); }
   function isAvailable(item) { return /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(joined(item)); }
   function isEnded(item) { return /종료|ended|closed|finish|complete|예약\s*완료|예약완료|예약\s*마감|예약마감/i.test([item?.state, item?.status, item?.message].map(valueOf).join(" ")); }
@@ -488,7 +551,7 @@ body #firstRows.history-grid .grid-row {
     });
   }
 
-  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); }
+  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); applyRoomCapacityLabels(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setInterval(applyRoomCapacityLabels, 1000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); setTimeout(applyRoomCapacityLabels, 1300); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
 </script>`;
@@ -672,6 +735,8 @@ function normalizeRoomName(value, category) {
 function normalizeItem(item) {
   const category = normalizeCategoryFromItem(item);
   const roomName = normalizeRoomName(item.roomName || item.room_name || item.room || item.fcltyNm || item.nameCol, category);
+  const capacity = capacityOf(item);
+  const displayRoomName = roomWithCapacity(roomName, { ...item, capacity });
   const rawStatus = String(item.status || item.canclYn || item.state || "").trim();
   const rawEventType = String(item.event_type || item.eventType || "").trim();
   const rawMessage = String(item.message || "").trim();
@@ -681,7 +746,7 @@ function normalizeItem(item) {
   const normalizedStatus = rawStatus || (inferredEventType === "available" ? "Y" : "N");
   const id = String(item.id || [item.date || item.target_date || item.beginDate || item.resveBeginDe || "", category, roomName, item.fcltyCode || "", item.fcltyTyCode || "", item.resveNoCode || ""].join("|"));
   const detectedAt = item.detectedAt || item.detected_at || item.time || item.detected || item.detectedTime || item.received_at || new Date().toISOString();
-  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, statusText: rawStatusText, message: rawMessage, detectedAt };
+  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName: displayRoomName, capacity, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, statusText: rawStatusText, message: rawMessage, detectedAt };
 }
 
 function parseDetailText(text) {
@@ -732,7 +797,8 @@ function eventForState(item) {
   const isAvailable = /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(combinedStatus);
   const eventType = rawEventType || (isAvailable ? "available" : "canceling");
   const stateText = rawState || rawStatusText || (isAvailable ? "종료" : "발생");
-  return { client: item.source || state.monitor.source || "go-mangsang", event_type: eventType, status: rawStatus || (isAvailable ? "Y" : "N"), state: stateText, statusText: rawStatusText, target_date: item.date, facility: item.category, room: item.roomName, room_name: item.roomName, detected_at: item.detectedAt, received_at: item.detectedAt, message: rawMessage || rawStatusText || [item.date, item.category, item.roomName].join(" ").trim() };
+  const displayRoomName = roomWithCapacity(item.roomName, item);
+  return { client: item.source || state.monitor.source || "go-mangsang", event_type: eventType, status: rawStatus || (isAvailable ? "Y" : "N"), state: stateText, statusText: rawStatusText, target_date: item.date, facility: item.category, room: displayRoomName, room_name: displayRoomName, capacity: item.capacity || capacityOf(item), detected_at: item.detectedAt, received_at: item.detectedAt, message: rawMessage || rawStatusText || [item.date, item.category, displayRoomName].join(" ").trim() };
 }
 
 function handleHeartbeatPayload(payload) {
@@ -831,6 +897,8 @@ function upsertEvents(items) {
       state: item.state || previous.state,
       event_type: item.event_type || previous.event_type,
       statusText: item.statusText || item.status_text || item.statusLabel || item.status_label || previous.statusText,
+      capacity: item.capacity || previous.capacity,
+      roomName: roomWithCapacity(previous.roomName || item.roomName, item.capacity ? item : previous),
       message: item.message || previous.message,
       detectedAt: previous.detectedAt || item.detectedAt
     });
