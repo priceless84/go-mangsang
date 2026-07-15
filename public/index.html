@@ -886,7 +886,7 @@
 <style id="codex-ui-direct-fixes">
     .grid-row .remaining-soon,
     .grid-row span.remaining-soon {
-      color: #003b8f !important;
+      color: #b00020 !important;
       font-weight: 950;
     }
 
@@ -917,7 +917,7 @@
 <style id="codex-ui-direct-fixes-v2">
   .grid-row .remaining-soon,
   .grid-row span.remaining-soon {
-    color: #003b8f !important;
+    color: #b00020 !important;
     font-weight: 950;
   }
 
@@ -972,69 +972,101 @@
 </style>
 
 <style id="codex-history-status-v3">
-  .history-grid .grid-head,
-  .history-grid .grid-row {
-    grid-template-columns: 50px 57px 42px 48px 86px minmax(112px, 1fr) !important;
+  #activeRows .grid-head,
+  #activeRows .grid-row,
+  #firstRows.history-grid .grid-head,
+  #firstRows.history-grid .grid-row {
+    grid-template-columns: 50px 64px 46px 48px 68px minmax(86px, 1fr) !important;
     justify-content: stretch !important;
     gap: 4px !important;
+    align-items: center !important;
   }
 
-  .history-grid .grid-head span:nth-child(5),
-  .history-grid .grid-row span:nth-child(5),
-  .history-grid .grid-head span:nth-child(6),
-  .history-grid .grid-row span:nth-child(6) {
+  #activeRows .grid-head > *,
+  #activeRows .grid-row > *,
+  #firstRows.history-grid .grid-head > *,
+  #firstRows.history-grid .grid-row > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+  }
+
+  #activeRows .grid-row .remaining-soon,
+  #activeRows .grid-row span.remaining-soon,
+  .grid-row .remaining-soon,
+  .grid-row span.remaining-soon {
+    color: #b00020 !important;
+    font-weight: 950 !important;
+  }
+
+  #firstRows.history-grid .grid-head span:nth-child(5),
+  #firstRows.history-grid .grid-row span:nth-child(5),
+  #firstRows.history-grid .grid-head span:nth-child(6),
+  #firstRows.history-grid .grid-row span:nth-child(6) {
     grid-column: auto !important;
     text-align: center !important;
   }
 
-  .history-grid .grid-row .history-kind {
+  #firstRows.history-grid .grid-row .history-kind,
+  #firstRows.history-grid .grid-row span:nth-child(5).history-kind {
     display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    min-height: 26px;
-    padding: 3px 8px;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 26px !important;
+    padding: 3px 6px !important;
     border: 0 !important;
-    border-radius: 999px;
+    border-radius: 999px !important;
     background: #fff3d6 !important;
     color: #9a5b00 !important;
-    font-family: var(--sans);
-    font-size: 12px;
-    font-weight: 850;
-    white-space: nowrap;
+    font-family: var(--sans) !important;
+    font-size: 12px !important;
+    font-weight: 850 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
   }
 
-  .history-grid .grid-row .history-kind.available {
+  #firstRows.history-grid .grid-row .history-kind.available,
+  #firstRows.history-grid .grid-row span:nth-child(5).history-kind.available {
     background: #dff7ea !important;
     color: #0f7a45 !important;
   }
 
-  .history-grid .grid-row .history-status {
+  #firstRows.history-grid .grid-row .history-status {
     display: flex !important;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    padding: 0 4px;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 34px !important;
+    padding: 0 4px !important;
     border: 0 !important;
     background: transparent !important;
     color: #17211b !important;
-    font-family: var(--sans);
-    font-size: 12px;
-    font-weight: 750;
-    line-height: 1.25;
-    white-space: normal;
-    word-break: keep-all;
+    font-family: var(--sans) !important;
+    font-size: 12px !important;
+    font-weight: 750 !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
   }
 
   @media (min-width: 760px) {
-    .history-grid .grid-head,
-    .history-grid .grid-row {
+    #activeRows .grid-head,
+    #activeRows .grid-row,
+    #firstRows.history-grid .grid-head,
+    #firstRows.history-grid .grid-row {
       grid-template-columns: 96px 124px 78px 90px 116px minmax(170px, 1fr) !important;
       gap: 8px !important;
     }
 
-    .history-grid .grid-row .history-status {
-      font-size: 13px;
-      padding: 0 8px;
+    #firstRows.history-grid .grid-row .history-status {
+      font-size: 13px !important;
+      padding: 0 8px !important;
     }
   }
 </style>
@@ -1307,7 +1339,7 @@
       const type = String(row.eventType || row.event_type || "").toLowerCase();
       const raw = `${row.status || ""} ${row.state || ""} ${row.message || ""}`;
       if (type.includes("available") || raw.includes("예약 가능") || raw.includes("예약가능")) return "예약가능";
-      return "취소진행중";
+      return "취소중";
     }
 
     function historyKindClass(row) {
