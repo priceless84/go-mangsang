@@ -433,6 +433,7 @@ body #firstRows.history-grid .grid-row > * {
       if (isAvailable(item)) return "종료 → 예약가능";
       if (state && !/^[NY]$/i.test(state) && !/canceling|available/i.test(state)) return normalizeStatusPhrase(state);
       if (status && !/^[NY]$/i.test(status) && !/canceling|available/i.test(status)) return normalizeStatusPhrase(status);
+      if (/canceling|취소|N/i.test(combined)) return "취소 진행중";
       return phrase || "발생";
     };
     if (typeof window.render === "function") window.render();
@@ -907,6 +908,7 @@ function eventStatusText(item, previous = {}) {
   }
   const phrase = normalizeStatusPhraseServer((combined.match(/예약\s*완료|예약완료|선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점|예약\s*중|예약중|예약\s*가능|예약가능|예약\s*마감|예약마감|발생/i) || [""])[0]);
   if (phrase && phrase !== "발생") return /available|예약|선점|Y/i.test(combined) ? "종료 → " + phrase : phrase;
+  if (/canceling|취소|N/i.test(combined)) return "취소 진행중";
   return phrase || "발생";
 }
 
