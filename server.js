@@ -1,8 +1,10 @@
 "use strict";
 
+
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -22,141 +24,58 @@ const UI_FIX_CSS = String.raw`
 #activeRows .grid-row,
 #firstRows.history-grid .grid-head,
 #firstRows.history-grid .grid-row {
-  grid-template-columns: 50px 64px 46px 48px 68px minmax(86px, 1fr) !important;
+  grid-template-columns: 50px 62px 46px 48px 62px minmax(92px, 1fr) !important;
   justify-content: stretch !important;
-  gap: 4px !important;
+  gap: 5px !important;
   align-items: center !important;
 }
-
-#activeRows .grid-head > *,
-#activeRows .grid-row > *,
-#firstRows.history-grid .grid-head > *,
-#firstRows.history-grid .grid-row > * {
-  min-width: 0 !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-  text-align: center !important;
+#activeRows .grid-head > *, #activeRows .grid-row > *, #firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * {
+  min-width: 0 !important; max-width: 100% !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; text-align: center !important;
 }
-
-#activeRows .grid-row .remaining-soon,
-#activeRows .grid-row span.remaining-soon,
-.grid-row .remaining-soon,
-.grid-row span.remaining-soon {
-  color: #b00020 !important;
-  font-weight: 950 !important;
+#activeRows .grid-row .remaining-soon, #activeRows .grid-row span.remaining-soon, .grid-row .remaining-soon, .grid-row span.remaining-soon {
+  display: inline-flex !important; align-items: center !important; justify-content: center !important; min-width: 58px !important; min-height: 26px !important; padding: 4px 7px !important; border-radius: 999px !important; background: #d40000 !important; color: #fff !important; font-weight: 950 !important; box-shadow: 0 0 0 2px rgba(212, 0, 0, .12) !important;
 }
-
-.facility-status-box {
-  width: 100%;
-  min-height: 54px;
-  border-radius: 2px;
-  background: #000;
-  margin: 0 0 8px;
+.facility-status-box { width: 100%; min-height: 54px; border-radius: 2px; background: #000; margin: 0 0 8px; }
+.facility-status-box[hidden] { display: none !important; }
+#firstRows.history-grid .grid-head span:nth-child(5), #firstRows.history-grid .grid-row span:nth-child(5), #firstRows.history-grid .grid-head span:nth-child(6), #firstRows.history-grid .grid-row span:nth-child(6) { grid-column: auto !important; text-align: center !important; }
+#firstRows.history-grid .grid-row .history-kind, #firstRows.history-grid .grid-row span:nth-child(5).history-kind {
+  display: inline-flex !important; align-items: center !important; justify-content: center !important; min-width: 0 !important; width: 100% !important; min-height: 26px !important; padding: 0 2px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: #a36300 !important; font-family: var(--sans) !important; font-size: 12px !important; font-weight: 900 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important;
 }
-
-.facility-status-box[hidden] {
-  display: none !important;
-}
-
-#firstRows.history-grid .grid-head span:nth-child(5),
-#firstRows.history-grid .grid-row span:nth-child(5),
-#firstRows.history-grid .grid-head span:nth-child(6),
-#firstRows.history-grid .grid-row span:nth-child(6) {
-  grid-column: auto !important;
-  text-align: center !important;
-}
-
-#firstRows.history-grid .grid-row .history-kind,
-#firstRows.history-grid .grid-row span:nth-child(5).history-kind {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-width: 0 !important;
-  width: 100% !important;
-  min-height: 26px !important;
-  padding: 3px 6px !important;
-  border: 0 !important;
-  border-radius: 999px !important;
-  background: #fff3d6 !important;
-  color: #9a5b00 !important;
-  font-family: var(--sans) !important;
-  font-size: 12px !important;
-  font-weight: 850 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: clip !important;
-}
-
-#firstRows.history-grid .grid-row .history-kind.available,
-#firstRows.history-grid .grid-row span:nth-child(5).history-kind.available {
-  background: #dff7ea !important;
-  color: #0f7a45 !important;
-}
-
+#firstRows.history-grid .grid-row .history-kind.available, #firstRows.history-grid .grid-row span:nth-child(5).history-kind.available { background: transparent !important; color: #08783f !important; }
 #firstRows.history-grid .grid-row .history-status {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-height: 34px !important;
-  padding: 0 4px !important;
-  border: 0 !important;
-  background: transparent !important;
-  color: #17211b !important;
-  font-family: var(--sans) !important;
-  font-size: 12px !important;
-  font-weight: 750 !important;
-  line-height: 1.25 !important;
-  white-space: normal !important;
-  word-break: keep-all !important;
-  overflow-wrap: anywhere !important;
+  display: flex !important; align-items: center !important; justify-content: center !important; min-height: 34px !important; padding: 0 4px !important; border: 0 !important; background: transparent !important; color: #17211b !important; font-family: var(--sans) !important; font-size: 12px !important; font-weight: 850 !important; line-height: 1.2 !important; white-space: normal !important; word-break: keep-all !important; overflow-wrap: anywhere !important;
 }
-
-@media (min-width: 760px) {
-  #activeRows .grid-head,
-  #activeRows .grid-row,
-  #firstRows.history-grid .grid-head,
-  #firstRows.history-grid .grid-row {
-    grid-template-columns: 96px 124px 78px 90px 116px minmax(170px, 1fr) !important;
-    gap: 8px !important;
-  }
-
-  #firstRows.history-grid .grid-row .history-status {
-    font-size: 13px !important;
-    padding: 0 8px !important;
-  }
-
-  .facility-status-box {
-    min-height: 64px;
-  }
-}
-
-@media (max-width: 759px) {
-  .facility-status-box {
-    min-height: 42px;
-  }
-}
+@media (min-width: 760px) { #activeRows .grid-head, #activeRows .grid-row, #firstRows.history-grid .grid-head, #firstRows.history-grid .grid-row { grid-template-columns: 96px 124px 78px 90px 116px minmax(170px, 1fr) !important; gap: 8px !important; } #firstRows.history-grid .grid-row .history-status { font-size: 13px !important; padding: 0 8px !important; } .facility-status-box { min-height: 64px; } }
+@media (max-width: 759px) { .facility-status-box { min-height: 42px; } }
 </style>
 <script id="codex-facility-status-box" defer>
 (() => {
-  function insertFacilityBox() {
-    if (document.querySelector('.facility-status-box')) return;
-    const titles = Array.from(document.querySelectorAll('.field-title'));
-    const facilityTitle = titles.find(title => (title.textContent || '').includes('시설명'));
-    if (!facilityTitle) return;
-    const box = document.createElement('div');
-    box.className = 'facility-status-box';
-    box.setAttribute('aria-label', '상태 표시 박스');
-    facilityTitle.insertAdjacentElement('afterend', box);
+  function valueOf(v) { return String(v || "").trim(); }
+  function joined(item) { return [item?.event_type, item?.eventType, item?.kind, item?.status, item?.state, item?.message].map(valueOf).join(" "); }
+  function isAvailable(item) { return /available|예약\s*가능|예약가능|예약\s*마감|Y/i.test(joined(item)); }
+  function isEnded(item) { return /종료|ended|closed|finish|complete/i.test([item?.state, item?.status, item?.message].map(valueOf).join(" ")); }
+  function installStatusOverrides() {
+    window.historyKind = function historyKind(item) { return isAvailable(item) ? "예약가능" : "취소중"; };
+    window.historyKindClass = function historyKindClass(item) { return isAvailable(item) ? "history-kind available" : "history-kind canceling"; };
+    window.statusText = function statusText(item) {
+      const state = valueOf(item?.state), status = valueOf(item?.status), message = valueOf(item?.message);
+      const combined = [state, status, message].filter(Boolean).join(" ");
+      const endMatch = combined.match(/종료\s*(?:→|->|-)?\s*([^,|]*)/);
+      if (endMatch) { const tail = valueOf(endMatch[1]); return tail ? "종료 → " + tail : "종료"; }
+      if (isEnded(item)) return "종료";
+      if (isAvailable(item)) return "종료 → 예약 가능";
+      if (state && !/^[NY]$/i.test(state) && !/canceling|available/i.test(state)) return state;
+      if (status && !/^[NY]$/i.test(status) && !/canceling|available/i.test(status)) return status;
+      return "발생";
+    };
+    if (typeof window.render === "function") window.render();
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', insertFacilityBox, { once: true });
-  } else {
-    insertFacilityBox();
-  }
+  function insertFacilityBox() { if (document.querySelector(".facility-status-box")) return; const titles = Array.from(document.querySelectorAll(".field-title")); const facilityTitle = titles.find(title => (title.textContent || "").includes("시설명")); if (!facilityTitle) return; const box = document.createElement("div"); box.className = "facility-status-box"; box.setAttribute("aria-label", "상태 표시 박스"); facilityTitle.insertAdjacentElement("afterend", box); }
+  function boot() { installStatusOverrides(); insertFacilityBox(); setTimeout(installStatusOverrides, 1000); }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
 </script>`;
+
 
 const state = {
   startedAt: new Date().toISOString(),
@@ -179,28 +98,34 @@ const state = {
   events: []
 };
 
+
 let monitorError = "";
 let lastStateSyncAt = 0;
+
 
 function lastReportAgeMs() {
   const time = new Date(state.lastReportAt || 0).getTime();
   return Number.isFinite(time) ? Date.now() - time : Infinity;
 }
 
+
 function hasFreshLocalReport() {
   return state.monitor.source === "reservation-console" && lastReportAgeMs() <= LOCAL_REPORT_FRESH_MS;
 }
+
 
 function normalizeIntervalSec(value) {
   const sec = Number(value);
   return [10, 30, 60, 300].includes(sec) ? sec : 60;
 }
 
+
 function ensureDataFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, "[]", "utf8");
   if (!fs.existsSync(ACTIVE_FILE)) fs.writeFileSync(ACTIVE_FILE, "[]", "utf8");
 }
+
 
 function loadEvents() {
   ensureDataFile();
@@ -218,15 +143,18 @@ function loadEvents() {
   }
 }
 
+
 function saveEvents() {
   ensureDataFile();
   fs.writeFileSync(DATA_FILE, JSON.stringify(state.events.slice(-MAX_EVENTS), null, 2), "utf8");
 }
 
+
 function saveActive() {
   ensureDataFile();
   fs.writeFileSync(ACTIVE_FILE, JSON.stringify(state.active, null, 2), "utf8");
 }
+
 
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -240,6 +168,7 @@ function sendJson(res, statusCode, payload) {
   res.end(body);
 }
 
+
 function sendText(res, statusCode, text) {
   res.writeHead(statusCode, {
     "Content-Type": "text/plain; charset=utf-8",
@@ -248,6 +177,7 @@ function sendText(res, statusCode, text) {
   });
   res.end(text);
 }
+
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -264,6 +194,7 @@ function readBody(req) {
   });
 }
 
+
 function normalizeCategoryName(value) {
   const name = String(value || "-").trim();
   if (name === "1600") return "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5";
@@ -278,6 +209,7 @@ function normalizeCategoryName(value) {
   if (name.includes("\ub4e0\ubc14\ub2e4")) return "\ub4e0\ubc14\ub2e4";
   return name;
 }
+
 
 function normalizeCategoryFromItem(item) {
   const candidates = [
@@ -310,6 +242,7 @@ function normalizeCategoryFromItem(item) {
   return normalizeCategoryName(item.category || item.name || item.facility || "-");
 }
 
+
 function normalizeRoomName(value, category) {
   const text = String(value || "-").trim();
   if (category === "\uc790\ub3d9\ucc28\ucea0\ud551\uc7a5") {
@@ -317,6 +250,7 @@ function normalizeRoomName(value, category) {
   }
   return text;
 }
+
 
 function normalizeItem(item) {
   const category = normalizeCategoryFromItem(item);
@@ -326,7 +260,9 @@ function normalizeItem(item) {
     `${item.date || item.target_date || item.beginDate || item.resveBeginDe || ""}|${category}|${roomName}|${item.fcltyCode || ""}|${item.fcltyTyCode || ""}|${item.resveNoCode || ""}`
   );
 
+
   const detectedAt = item.detectedAt || item.detected_at || item.time || item.detected || item.detectedTime || item.received_at || new Date().toISOString();
+
 
   return {
     id,
@@ -341,6 +277,7 @@ function normalizeItem(item) {
   };
 }
 
+
 function parseDetailText(text) {
   const raw = String(text || "").trim();
   const match = raw.match(/^(\d{4}-\d{2}-\d{2})\s+(.+?)\s+(\S+)$/);
@@ -353,6 +290,7 @@ function parseDetailText(text) {
   };
 }
 
+
 function heartbeatCancelingItems(heartbeat) {
   if (!heartbeat || typeof heartbeat !== "object") return [];
   if (Array.isArray(heartbeat.canceling_items)) return heartbeat.canceling_items;
@@ -363,6 +301,7 @@ function heartbeatCancelingItems(heartbeat) {
   }
   return [];
 }
+
 
 function normalizeHeartbeat(payload) {
   const heartbeat = payload.heartbeat && typeof payload.heartbeat === "object"
@@ -375,6 +314,7 @@ function normalizeHeartbeat(payload) {
     client: heartbeat.client || payload.client || heartbeat.source || payload.source || "state-signal"
   };
 }
+
 
 function eventForState(item) {
   return {
@@ -391,6 +331,7 @@ function eventForState(item) {
   };
 }
 
+
 function handleHeartbeatPayload(payload) {
   const heartbeat = normalizeHeartbeat(payload || {});
   const rawCanceling = heartbeatCancelingItems(heartbeat);
@@ -403,6 +344,7 @@ function handleHeartbeatPayload(payload) {
     }))
     .filter(item => item.date !== "-" && item.category !== "-" && item.roomName !== "-");
   const uniqueActive = Array.from(new Map(active.map(item => [item.id, item])).values());
+
 
   state.heartbeat = {
     ...heartbeat,
@@ -420,6 +362,7 @@ function handleHeartbeatPayload(payload) {
   };
   monitorError = String(heartbeat.error || heartbeat.monitorError || heartbeat.message || "");
 
+
   if (Array.isArray(heartbeat.canceling_items) || Array.isArray(heartbeat.canceling) || Array.isArray(heartbeat.active) || Array.isArray(heartbeat.canceling_details)) {
     state.active = uniqueActive;
     saveActive();
@@ -428,9 +371,11 @@ function handleHeartbeatPayload(payload) {
   return uniqueActive;
 }
 
+
 function stateEventsForApi() {
   return state.events.map(eventForState);
 }
+
 
 function heartbeatForApi() {
   if (state.heartbeat) return state.heartbeat;
@@ -445,6 +390,7 @@ function heartbeatForApi() {
     available_items: []
   };
 }
+
 
 async function syncStateSignal() {
   if (hasFreshLocalReport()) return;
@@ -467,6 +413,7 @@ async function syncStateSignal() {
   } catch (error) {}
 }
 
+
 function upsertEvents(items) {
   const map = new Map(state.events.map(item => [item.id, item]));
   for (const item of items) {
@@ -477,6 +424,7 @@ function upsertEvents(items) {
     .slice(-MAX_EVENTS);
   saveEvents();
 }
+
 
 function contentTypeFor(filePath) {
   const ext = path.extname(filePath).toLowerCase();
@@ -493,6 +441,7 @@ function contentTypeFor(filePath) {
   }[ext] || "application/octet-stream";
 }
 
+
 function safeJoinPublic(urlPath) {
   const decoded = decodeURIComponent(urlPath.split("?")[0]);
   const normalized = path.normalize(decoded).replace(/^(\.\.[/\\])+/, "");
@@ -501,6 +450,7 @@ function safeJoinPublic(urlPath) {
   return target;
 }
 
+
 function patchHtmlResponse(filePath, content) {
   if (path.basename(filePath) !== "index.html") return content;
   const html = content.toString("utf8");
@@ -508,12 +458,14 @@ function patchHtmlResponse(filePath, content) {
   return html.replace("</head>", `${UI_FIX_CSS}\n</head>`);
 }
 
+
 function sendStatic(req, res) {
   const filePath = safeJoinPublic(new URL(req.url, `http://${req.headers.host}`).pathname);
   if (!filePath) {
     sendText(res, 403, "Forbidden");
     return;
   }
+
 
   fs.readFile(filePath, (error, content) => {
     if (error) {
@@ -530,6 +482,7 @@ function sendStatic(req, res) {
   });
 }
 
+
 function activeForView() {
   if (state.monitor.source === "reservation-console" && lastReportAgeMs() > LOCAL_REPORT_FRESH_MS) {
     return [];
@@ -541,22 +494,27 @@ function activeForView() {
   );
 }
 
+
 loadEvents();
+
 
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
+
 
     if (req.method === "OPTIONS") {
       sendJson(res, 204, {});
       return;
     }
 
+
     if (req.method === "GET" && url.pathname === "/api/status") {
       await syncStateSignal();
       sendJson(res, 200, { ok: true, ...state, eventCount: state.events.length, monitorError, monitorRunning: false });
       return;
     }
+
 
     if (req.method === "GET" && url.pathname === "/api/events") {
       await syncStateSignal();
@@ -577,6 +535,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+
     if (req.method === "GET" && url.pathname === "/api/state") {
       await syncStateSignal();
       sendJson(res, 200, {
@@ -587,10 +546,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+
     if (req.method === "GET" && url.pathname === "/api/config") {
       sendJson(res, 200, { ok: true, config: state.config });
       return;
     }
+
 
     if (req.method === "POST" && url.pathname === "/api/config") {
       const payload = JSON.parse((await readBody(req)) || "{}");
@@ -604,6 +565,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+
     if (req.method === "POST" && (url.pathname === "/api/heartbeat" || url.pathname === "/api/state")) {
       const payload = JSON.parse((await readBody(req)) || "{}");
       const active = handleHeartbeatPayload(payload);
@@ -616,6 +578,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+
     if (req.method === "POST" && url.pathname === "/api/report") {
       const payload = JSON.parse((await readBody(req)) || "{}");
       const now = new Date().toISOString();
@@ -623,6 +586,7 @@ const server = http.createServer(async (req, res) => {
       const rawEvents = Array.isArray(payload.events) ? payload.events.map(normalizeItem) : [];
       const active = Array.from(new Map(rawActive.map(item => [item.id, item])).values());
       const reportedEvents = Array.from(new Map(rawEvents.map(item => [item.id, item])).values());
+
 
       state.previousRefreshAt = state.lastRefreshAt;
       state.lastRefreshAt = payload.refreshedAt || now;
@@ -646,9 +610,11 @@ const server = http.createServer(async (req, res) => {
       if (active.length > 0) upsertEvents(active);
       if (reportedEvents.length > 0) upsertEvents(reportedEvents);
 
+
       sendJson(res, 200, { ok: true, activeCount: state.active.length, eventCount: state.events.length });
       return;
     }
+
 
     if (req.method === "POST" && url.pathname === "/api/reset") {
       state.active = [];
@@ -660,20 +626,24 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+
     if (req.method === "GET" && url.pathname === "/api/presence") {
       sendJson(res, 200, { ok: true, online: 1 });
       return;
     }
+
 
     if (req.method === "POST" && url.pathname === "/api/presence") {
       sendJson(res, 200, { ok: true, online: 1 });
       return;
     }
 
+
     if (req.method === "GET") {
       sendStatic(req, res);
       return;
     }
+
 
     sendText(res, 405, "Method Not Allowed");
   } catch (error) {
@@ -681,6 +651,28 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+
 server.listen(PORT, HOST, () => {
   console.log(`go-mangsang dashboard listening on http://${HOST}:${PORT}`);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
