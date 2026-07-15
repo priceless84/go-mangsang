@@ -377,7 +377,7 @@ body #firstRows.history-grid .grid-row > * {
     const direct = valueOf(item?.capacity || item?.people || item?.person || item?.persons || item?.headcount || item?.cnt || item?.inwon || item?.roomCapacity || item?.capacityText);
     const text = direct || [item?.roomName, item?.room_name, item?.room, item?.name, item?.message, item?.raw].map(valueOf).join(" ");
     const match = text.match(/(\d+)\s*(?:인|명|people|persons?)/i);
-    return match ? match[1] : "";
+    return match ? match[1] : "2";
   }
   function roomWithCapacity(room, item) {
     const base = valueOf(room).replace(/\s*\(\d+\s*인\)\s*$/, "");
@@ -740,7 +740,7 @@ function capacityOf(item) {
   const direct = valueOfServer(item.capacity || item.people || item.person || item.persons || item.headcount || item.cnt || item.inwon || item.roomCapacity || item.capacityText);
   const text = direct || [item.roomName, item.room_name, item.room, item.name, item.message, item.raw].map(valueOfServer).join(" ");
   const match = text.match(/(\d+)\s*(?:인|명|people|persons?)/i);
-  return match ? match[1] : "";
+  return match ? match[1] : "2";
 }
 
 function roomWithCapacity(room, item) {
