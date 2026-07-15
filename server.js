@@ -307,7 +307,7 @@ body #firstRows.history-grid .grid-row .history-status {
   body #firstRows.history-grid .grid-row .history-kind,
   body #firstRows.history-grid .grid-row span:nth-child(5).history-kind,
   body #firstRows.history-grid .grid-row .history-status {
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 }
 </style>
