@@ -98,6 +98,24 @@ const UI_FIX_CSS = String.raw`
   .codex-live-summary .summary-value { font-size: 17px; }
 }
 
+
+body #activeRows .grid-row .remaining-soon,
+body #activeRows .grid-row span.remaining-soon,
+body .grid-row .remaining-soon,
+body .grid-row span.remaining-soon {
+  display: inline !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #c40000 !important;
+  font-weight: 950 !important;
+  box-shadow: none !important;
+}
+
 </style>
 <script id="codex-facility-status-box" defer>
 (() => {
@@ -201,7 +219,24 @@ const UI_FIX_CSS = String.raw`
     } catch (error) {}
   }
 
-  function boot() { installStatusOverrides(); insertFacilityBox(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setTimeout(installStatusOverrides, 1000); }
+
+  function fixRemainingStyle() {
+    Array.from(document.querySelectorAll('.remaining-soon')).forEach(el => {
+      el.style.setProperty('display', 'inline', 'important');
+      el.style.setProperty('width', 'auto', 'important');
+      el.style.setProperty('min-width', '0', 'important');
+      el.style.setProperty('min-height', '0', 'important');
+      el.style.setProperty('padding', '0', 'important');
+      el.style.setProperty('border', '0', 'important');
+      el.style.setProperty('border-radius', '0', 'important');
+      el.style.setProperty('background', 'transparent', 'important');
+      el.style.setProperty('color', '#c40000', 'important');
+      el.style.setProperty('font-weight', '950', 'important');
+      el.style.setProperty('box-shadow', 'none', 'important');
+    });
+  }
+
+  function boot() { installStatusOverrides(); insertFacilityBox(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); fixRemainingStyle(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
 </script>`;
