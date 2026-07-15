@@ -883,6 +883,39 @@
     }
   </style>
 
+<style id="codex-ui-direct-fixes">
+    .grid-row .remaining-soon,
+    .grid-row span.remaining-soon {
+      color: #003b8f !important;
+      font-weight: 950;
+    }
+
+    .history-grid .grid-head,
+    .history-grid .grid-row {
+      grid-template-columns: 96px 104px 64px 76px 76px 82px !important;
+    }
+
+    .history-grid .grid-head span:nth-child(5),
+    .history-grid .grid-row span:nth-child(5) {
+      grid-column: 5 / span 2 !important;
+    }
+
+    @media (min-width: 760px) {
+      .history-grid .grid-head,
+      .history-grid .grid-row {
+        grid-template-columns: 112px 132px 84px 96px 96px 104px !important;
+      }
+    }
+
+    @media (max-width: 759px) {
+      .history-grid .grid-head,
+      .history-grid .grid-row {
+        grid-template-columns: 50px 51px 42px 44px 44px 61px !important;
+      }
+    }
+  </style>
+</head>
+
 <body>
   <div class="app">
     <header class="topbar">
