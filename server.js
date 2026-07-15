@@ -451,7 +451,7 @@ body #firstRows.history-grid .grid-row > * {
     const resveYn = signalFlag(item, "resveYn", "resve_yn");
     const preocpcYn = signalFlag(item, "preocpcYn", "preocpc_yn");
     const imprtyYn = signalFlag(item, "imprtyYn", "imprty_yn");
-    const canclYn = signalFlag(item, "canclYn", "cancl_yn", "cancelYn", "cancel_yn");
+    const canclYn = signalFlag(item, "canclYn", "cancl_yn", "cancelYn", "cancel_yn") || (signalFlag(item, "status") === "N" ? "N" : "");
     if ((item?._activeSignalMatch || item?.myActive || item?.mine || item?.isMine) && (preocpcYn === "Y" || /선점|preocpc|active/i.test(combined))) return "나의 선점 시설";
     if (/예약 *완료|예약완료|예약 *중|예약중|결제 *완료|결제완료|payment *complete|reserved/i.test(combined)) return "예약중";
     if (/예약 *마감|예약마감|예약 *불가|예약불가|예약 *불가능|마감|불가|closed|unavailable/i.test(combined)) return "예약마감시설";
@@ -758,7 +758,7 @@ body #firstRows.history-grid .grid-row > * {
       if (!response.ok) return;
       const payload = await response.json();
       const fromEvents = Array.isArray(payload.events) ? payload.events.map(item => historyRecordFromEvent(item)) : [];
-      const fromActive = Array.isArray(payload.active) ? payload.active.map(item => historyRecordFromEvent({ ...item, event_type: "canceling", state: "취소 진행중", statusText: "취소 진행중" }, "취소중")) : [];
+      const fromActive = Array.isArray(payload.active) ? payload.active.map(item => historyRecordFromEvent({ ...item, event_type: "canceling", state: "취소진행시설", statusText: "취소진행시설", canclYn: "N", status: "N" }, "취소중")) : [];
       const merged = mergeHistoryRecords(loadStoredHistory(), readRowsAsHistory("#firstRows.history-grid", "history"), readRowsAsHistory("#activeRows", "active"), fromEvents, fromActive);
       if (merged.length) {
         saveStoredHistory(merged);
@@ -1034,7 +1034,7 @@ function signalStatusTextServer(item, previous = {}) {
   const resveYn = signalFlagServer(merged, "resveYn", "resve_yn");
   const preocpcYn = signalFlagServer(merged, "preocpcYn", "preocpc_yn");
   const imprtyYn = signalFlagServer(merged, "imprtyYn", "imprty_yn");
-  const canclYn = signalFlagServer(merged, "canclYn", "cancl_yn", "cancelYn", "cancel_yn");
+  const canclYn = signalFlagServer(merged, "canclYn", "cancl_yn", "cancelYn", "cancel_yn") || (signalFlagServer(merged, "status") === "N" ? "N" : "");
   if ((merged._activeSignalMatch || merged.myActive || merged.mine || merged.isMine) && (preocpcYn === "Y" || /선점|preocpc|active/i.test(combined))) return "나의 선점 시설";
   if (/예약 *완료|예약완료|예약 *중|예약중|결제 *완료|결제완료|payment *complete|reserved/i.test(combined)) return "예약중";
   if (/예약 *마감|예약마감|예약 *불가|예약불가|예약 *불가능|마감|불가|closed|unavailable/i.test(combined)) return "예약마감시설";
