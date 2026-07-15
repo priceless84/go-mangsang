@@ -645,9 +645,16 @@ body #firstRows.history-grid .grid-row > * {
     return Array.from(map.values()).sort((a, b) => (a.date + a.facility + a.room).localeCompare(b.date + b.facility + b.room, "ko"));
   }
 
+  function historyRenderSignature(items) {
+    return JSON.stringify(items.map(item => [item.date, item.facility, item.room, item.detected, item.kind, item.status]));
+  }
+
   function renderStoredHistory(items) {
     const wrap = document.querySelector("#firstRows.history-grid");
     if (!wrap) return;
+    const signature = historyRenderSignature(items);
+    if (wrap.dataset.codexHistorySignature === signature) return;
+    wrap.dataset.codexHistorySignature = signature;
     let head = wrap.querySelector(".grid-head");
     if (!head) {
       head = document.createElement("div");
@@ -699,7 +706,7 @@ body #firstRows.history-grid .grid-row > * {
     }
   }
 
-  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); applyRoomCapacityLabels(); syncPersistentHistory(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setInterval(applyRoomCapacityLabels, 1000); setInterval(syncPersistentHistory, 1000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); setTimeout(applyRoomCapacityLabels, 1300); setTimeout(syncPersistentHistory, 1500); }
+  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); applyRoomCapacityLabels(); syncPersistentHistory(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setInterval(applyRoomCapacityLabels, 1000); setInterval(syncPersistentHistory, 3000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); setTimeout(applyRoomCapacityLabels, 1300); setTimeout(syncPersistentHistory, 1500); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
 </script>`;
