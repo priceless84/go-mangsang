@@ -376,15 +376,19 @@ body #firstRows.history-grid .grid-row > * {
   const DEUNBADA_CAPACITY_MAP = {
     "101": "8", "102": "4", "103": "4", "104": "2", "105": "2", "106": "10", "107": "2", "108": "2", "109": "4", "110": "8", "111": "4", "112": "6", "113": "2", "114": "2", "115": "6", "116": "4", "117": "2", "118": "2", "119": "6", "120": "4", "121": "4", "122": "4", "123": "4"
   };
+  const NANBADA_CAPACITY_MAP = {
+    "101": "8", "102": "6", "103": "4", "104": "4", "105": "6", "106": "10", "107": "4", "108": "4", "109": "8", "110": "6", "111": "4", "112": "4", "113": "8", "114": "6", "115": "10"
+  };
   function roomNumberOf(room) {
     const match = valueOf(room).match(/(\d+)\s*번?/);
     return match ? match[1] : "";
   }
   function mappedCapacity(item) {
     const facility = valueOf(item?.facility || item?.category || item?.categoryName || item?.name || item?.fcltyNm);
-    if (!/든바다/.test(facility)) return "";
     const roomNo = roomNumberOf(item?.room || item?.roomName || item?.room_name || item?.name || item?.raw);
-    return DEUNBADA_CAPACITY_MAP[roomNo] || "";
+    if (/든바다/.test(facility)) return DEUNBADA_CAPACITY_MAP[roomNo] || "";
+    if (/난바다/.test(facility)) return NANBADA_CAPACITY_MAP[roomNo] || "";
+    return "";
   }
   function capacityOf(item) {
     const mapped = mappedCapacity(item || {});
@@ -879,6 +883,9 @@ function valueOfServer(v) {
 const DEUNBADA_CAPACITY_MAP_SERVER = {
   "101": "8", "102": "4", "103": "4", "104": "2", "105": "2", "106": "10", "107": "2", "108": "2", "109": "4", "110": "8", "111": "4", "112": "6", "113": "2", "114": "2", "115": "6", "116": "4", "117": "2", "118": "2", "119": "6", "120": "4", "121": "4", "122": "4", "123": "4"
 };
+const NANBADA_CAPACITY_MAP_SERVER = {
+  "101": "8", "102": "6", "103": "4", "104": "4", "105": "6", "106": "10", "107": "4", "108": "4", "109": "8", "110": "6", "111": "4", "112": "4", "113": "8", "114": "6", "115": "10"
+};
 
 function roomNumberOfServer(room) {
   const match = valueOfServer(room).match(/(\d+)\s*번?/);
@@ -887,9 +894,10 @@ function roomNumberOfServer(room) {
 
 function mappedCapacityServer(item) {
   const facility = valueOfServer(item.facility || item.category || item.categoryName || item.name || item.fcltyNm);
-  if (!/든바다/.test(facility)) return "";
   const roomNo = roomNumberOfServer(item.room || item.roomName || item.room_name || item.name || item.raw);
-  return DEUNBADA_CAPACITY_MAP_SERVER[roomNo] || "";
+  if (/든바다/.test(facility)) return DEUNBADA_CAPACITY_MAP_SERVER[roomNo] || "";
+  if (/난바다/.test(facility)) return NANBADA_CAPACITY_MAP_SERVER[roomNo] || "";
+  return "";
 }
 
 function capacityOf(item) {
