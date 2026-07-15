@@ -20,20 +20,28 @@ const STATE_SIGNAL_URL = process.env.STATE_SIGNAL_URL || "https://mangsang-alarm
 const LOCAL_REPORT_FRESH_MS = 180 * 1000;
 const UI_FIX_CSS = String.raw`
 <style id="codex-ui-fixes">
+#activeRows,
+#firstRows.history-grid {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
 #activeRows .grid-head,
 #activeRows .grid-row,
 #firstRows.history-grid .grid-head,
 #firstRows.history-grid .grid-row {
-  grid-template-columns: 50px 62px 46px 48px 62px minmax(92px, 1fr) !important;
+  grid-template-columns: 54px 68px 52px 54px 68px 86px !important;
+  min-width: 382px !important;
   justify-content: stretch !important;
-  gap: 5px !important;
+  gap: 4px !important;
   align-items: center !important;
 }
 #activeRows .grid-head > *, #activeRows .grid-row > *, #firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * {
-  min-width: 0 !important; max-width: 100% !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; text-align: center !important;
+  min-width: 0 !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; white-space: nowrap !important; text-align: center !important;
+  font-size: 12px !important;
+  letter-spacing: 0 !important;
 }
 #activeRows .grid-row .remaining-soon, #activeRows .grid-row span.remaining-soon, .grid-row .remaining-soon, .grid-row span.remaining-soon {
-  display: inline-flex !important; align-items: center !important; justify-content: center !important; min-width: 58px !important; min-height: 26px !important; padding: 4px 7px !important; border-radius: 999px !important; background: #d40000 !important; color: #fff !important; font-weight: 950 !important; box-shadow: 0 0 0 2px rgba(212, 0, 0, .12) !important;
+  display: inline !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; border-radius: 0 !important; background: transparent !important; color: #c40000 !important; font-weight: 950 !important; box-shadow: none !important;
 }
 .facility-status-box { width: 100%; min-height: 54px; border-radius: 2px; background: #000; margin: 0 0 8px; }
 .facility-status-box[hidden] { display: none !important; }
@@ -45,7 +53,7 @@ const UI_FIX_CSS = String.raw`
 #firstRows.history-grid .grid-row .history-status {
   display: flex !important; align-items: center !important; justify-content: center !important; min-height: 34px !important; padding: 0 4px !important; border: 0 !important; background: transparent !important; color: #17211b !important; font-family: var(--sans) !important; font-size: 12px !important; font-weight: 850 !important; line-height: 1.2 !important; white-space: normal !important; word-break: keep-all !important; overflow-wrap: anywhere !important;
 }
-@media (min-width: 760px) { #activeRows .grid-head, #activeRows .grid-row, #firstRows.history-grid .grid-head, #firstRows.history-grid .grid-row { grid-template-columns: 96px 124px 78px 90px 116px minmax(170px, 1fr) !important; gap: 8px !important; } #firstRows.history-grid .grid-row .history-status { font-size: 13px !important; padding: 0 8px !important; } .facility-status-box { min-height: 64px; } }
+@media (min-width: 760px) { #activeRows .grid-head, #activeRows .grid-row, #firstRows.history-grid .grid-head, #firstRows.history-grid .grid-row { grid-template-columns: 96px 124px 78px 90px 116px 170px !important; min-width: 674px !important; gap: 8px !important; } #activeRows .grid-head > *, #activeRows .grid-row > *, #firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * { font-size: 13px !important; } #firstRows.history-grid .grid-row .history-status { font-size: 13px !important; padding: 0 8px !important; } .facility-status-box { min-height: 64px; } }
 @media (max-width: 759px) { .facility-status-box { min-height: 42px; } }
 
 .codex-live-summary {
