@@ -873,6 +873,45 @@ function roomWithCapacity(room, item) {
 }
 
 
+function normalizeStatusPhraseServer(text) {
+  const raw = valueOfServer(text);
+  if (!raw) return "";
+  if (/예약\s*완료|예약완료/i.test(raw)) return "예약완료";
+  if (/선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점/i.test(raw)) return "선점중";
+  if (/예약\s*중|예약중/i.test(raw)) return "예약중";
+  if (/예약\s*가능|예약가능/i.test(raw)) return "예약가능";
+  if (/예약\s*마감|예약마감/i.test(raw)) return "예약마감";
+  if (/발생|detected|new/i.test(raw)) return "발생";
+  return raw;
+}
+
+function eventStatusText(item, previous = {}) {
+  const combined = [
+    item.state,
+    item.statusText,
+    item.status_text,
+    item.statusLabel,
+    item.status_label,
+    item.message,
+    item.event_type,
+    item.eventType,
+    item.status,
+    previous.state,
+    previous.statusText,
+    previous.message
+  ].map(valueOfServer).filter(Boolean).join(" ");
+  const ended = combined.match(/종료\s*(?:→|->|-)?\s*([^,|]*)/);
+  if (ended) {
+    const tail = normalizeStatusPhraseServer(ended[1]);
+    return tail && tail !== "발생" ? "종료 → " + tail : "종료";
+  }
+  const phrase = normalizeStatusPhraseServer((combined.match(/예약\s*완료|예약완료|선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점|예약\s*중|예약중|예약\s*가능|예약가능|예약\s*마감|예약마감|발생/i) || [""])[0]);
+  if (phrase && phrase !== "발생") return /available|예약|선점|Y/i.test(combined) ? "종료 → " + phrase : phrase;
+  return phrase || "발생";
+}
+
+
+
 function normalizeItem(item) {
   const category = normalizeCategoryFromItem(item);
   const roomName = normalizeRoomName(item.roomName || item.room_name || item.room || item.fcltyNm || item.nameCol, category);
@@ -887,7 +926,7 @@ function normalizeItem(item) {
   const normalizedStatus = rawStatus || (inferredEventType === "available" ? "Y" : "N");
   const id = String(item.id || [item.date || item.target_date || item.beginDate || item.resveBeginDe || "", category, roomName, item.fcltyCode || "", item.fcltyTyCode || "", item.resveNoCode || ""].join("|"));
   const detectedAt = item.detectedAt || item.detected_at || item.time || item.detected || item.detectedTime || item.received_at || new Date().toISOString();
-  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName: displayRoomName, capacity, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, statusText: rawStatusText, message: rawMessage, detectedAt };
+  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName: displayRoomName, capacity, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, statusText: stateText, message: rawMessage, detectedAt };
 }
 
 function parseDetailText(text) {
@@ -937,7 +976,7 @@ function eventForState(item) {
   const combinedStatus = [rawEventType, rawStatus, rawState, rawMessage, rawStatusText].join(" ");
   const isAvailable = /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(combinedStatus);
   const eventType = rawEventType || (isAvailable ? "available" : "canceling");
-  const stateText = rawState || rawStatusText || (isAvailable ? "종료" : "발생");
+  const stateText = eventStatusText(item) || rawState || rawStatusText || (isAvailable ? "종료" : "발생");
   const displayRoomName = roomWithCapacity(item.roomName, item);
   return { client: item.source || state.monitor.source || "go-mangsang", event_type: eventType, status: rawStatus || (isAvailable ? "Y" : "N"), state: stateText, statusText: rawStatusText, target_date: item.date, facility: item.category, room: displayRoomName, room_name: displayRoomName, capacity: item.capacity || capacityOf(item), detected_at: item.detectedAt, received_at: item.detectedAt, message: rawMessage || rawStatusText || [item.date, item.category, displayRoomName].join(" ").trim() };
 }
@@ -1028,16 +1067,17 @@ function upsertEvents(items) {
   const map = new Map(state.events.map(item => [item.id, item]));
   for (const item of items) {
     const previous = map.get(item.id);
+    const statusText = eventStatusText(item, previous || {});
     if (!previous) {
-      map.set(item.id, item);
+      map.set(item.id, { ...item, state: statusText, statusText });
       continue;
     }
     map.set(item.id, {
       ...previous,
       status: item.status || previous.status,
-      state: item.state || previous.state,
+      state: statusText || item.state || previous.state,
       event_type: item.event_type || previous.event_type,
-      statusText: item.statusText || item.status_text || item.statusLabel || item.status_label || previous.statusText,
+      statusText: statusText || item.statusText || item.status_text || item.statusLabel || item.status_label || previous.statusText,
       capacity: item.capacity || previous.capacity,
       roomName: roomWithCapacity(previous.roomName || item.roomName, item.capacity ? item : previous),
       message: item.message || previous.message,
