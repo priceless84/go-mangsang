@@ -116,6 +116,121 @@ body .grid-row span.remaining-soon {
   box-shadow: none !important;
 }
 
+
+/* compact mobile layout cleanup */
+body .facility-status-box { display: none !important; }
+body .panel.controls { gap: 10px !important; }
+body .panel.controls button,
+body .panel.controls .chip,
+body .panel.controls label,
+body .panel.controls .segmented button,
+body .panel.controls .date-mode button,
+body .panel.controls input[type="button"] {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+body .panel.controls input[type="date"],
+body .panel.controls input:not([type]),
+body .panel.controls select {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+body .codex-live-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0 !important;
+  margin: 10px 0 2px !important;
+  padding: 10px 8px !important;
+  border-radius: 8px !important;
+}
+body .codex-live-summary .summary-cell {
+  border-right: 1px solid #e0ebe5 !important;
+  padding: 0 4px !important;
+}
+body .codex-live-summary .summary-cell:last-child { border-right: 0 !important; }
+body .codex-live-summary .summary-label {
+  margin-bottom: 4px !important;
+  font-size: 11px !important;
+  line-height: 1.1 !important;
+}
+body .codex-live-summary .summary-value {
+  font-size: 16px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+}
+body #activeRows,
+body #firstRows.history-grid {
+  overflow-x: hidden !important;
+}
+body #activeRows .grid-head,
+body #activeRows .grid-row,
+body #firstRows.history-grid .grid-head,
+body #firstRows.history-grid .grid-row {
+  grid-template-columns: 44px 58px 44px 48px 54px minmax(58px, 1fr) !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  gap: 3px !important;
+}
+body #activeRows .grid-head > *,
+body #activeRows .grid-row > *,
+body #firstRows.history-grid .grid-head > *,
+body #firstRows.history-grid .grid-row > * {
+  font-size: 11px !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+body #activeRows .grid-row .remaining-soon,
+body #activeRows .grid-row span.remaining-soon,
+body .grid-row .remaining-soon,
+body .grid-row span.remaining-soon {
+  display: inline !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #c40000 !important;
+  font-weight: 950 !important;
+  box-shadow: none !important;
+}
+@media (max-width: 390px) {
+  body .codex-live-summary .summary-label { font-size: 10px !important; }
+  body .codex-live-summary .summary-value { font-size: 14px !important; }
+  body #activeRows .grid-head,
+  body #activeRows .grid-row,
+  body #firstRows.history-grid .grid-head,
+  body #firstRows.history-grid .grid-row {
+    grid-template-columns: 42px 55px 42px 45px 50px minmax(54px, 1fr) !important;
+    gap: 2px !important;
+  }
+  body #activeRows .grid-head > *,
+  body #activeRows .grid-row > *,
+  body #firstRows.history-grid .grid-head > *,
+  body #firstRows.history-grid .grid-row > * { font-size: 10.5px !important; }
+}
+@media (min-width: 760px) {
+  body .codex-live-summary .summary-value { font-size: 20px !important; }
+  body #activeRows .grid-head,
+  body #activeRows .grid-row,
+  body #firstRows.history-grid .grid-head,
+  body #firstRows.history-grid .grid-row {
+    grid-template-columns: 96px 124px 78px 90px 116px minmax(170px, 1fr) !important;
+    gap: 8px !important;
+  }
+  body #activeRows .grid-head > *,
+  body #activeRows .grid-row > *,
+  body #firstRows.history-grid .grid-head > *,
+  body #firstRows.history-grid .grid-row > * { font-size: 13px !important; }
+}
+
 </style>
 <script id="codex-facility-status-box" defer>
 (() => {
@@ -168,7 +283,7 @@ body .grid-row span.remaining-soon {
   function ensureLiveSummaryBox() {
     let box = document.getElementById('codexLiveSummary');
     if (box) return box;
-    const topbar = document.querySelector('.topbar');
+    const controls = document.querySelector('.panel.controls');
     const app = document.querySelector('.app') || document.body;
     box = document.createElement('section');
     box.id = 'codexLiveSummary';
@@ -179,7 +294,7 @@ body .grid-row span.remaining-soon {
       '<div class="summary-cell"><span class="summary-label">갱신시간</span><strong class="summary-value" data-summary="refresh">-</strong></div>',
       '<div class="summary-cell"><span class="summary-label">갱신주기</span><strong class="summary-value" data-summary="interval">-</strong></div>'
     ].join('');
-    if (topbar && topbar.parentNode) topbar.insertAdjacentElement('afterend', box);
+    if (controls) controls.insertAdjacentElement('beforeend', box);
     else app.insertAdjacentElement('afterbegin', box);
     return box;
   }
@@ -220,6 +335,17 @@ body .grid-row span.remaining-soon {
   }
 
 
+
+  function applyLayoutTextCleanup() {
+    Array.from(document.querySelectorAll('.facility-status-box')).forEach(el => el.remove());
+    Array.from(document.querySelectorAll('.panel.section .section-title, .panel.section h2, .panel.section h3, .section-title, h2, h3'))
+      .forEach(el => {
+        const text = (el.textContent || '').trim();
+        if (text.includes('현재 실시간 취소 진행 중인 시설')) el.textContent = '취소 진행 중';
+        if (text.includes('취소 시설별 최초 감지 기록')) el.textContent = '감지기록 누적';
+      });
+  }
+
   function fixRemainingStyle() {
     Array.from(document.querySelectorAll('.remaining-soon')).forEach(el => {
       el.style.setProperty('display', 'inline', 'important');
@@ -236,7 +362,7 @@ body .grid-row span.remaining-soon {
     });
   }
 
-  function boot() { installStatusOverrides(); insertFacilityBox(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); fixRemainingStyle(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); }
+  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
 </script>`;
