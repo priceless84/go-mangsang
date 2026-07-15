@@ -1243,11 +1243,9 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/reset") {
       state.active = [];
-      state.events = [];
       state.monitor.activeCount = 0;
       saveActive();
-      saveEvents();
-      sendJson(res, 200, { ok: true });
+      sendJson(res, 200, { ok: true, eventCount: state.events.length });
       return;
     }
 
