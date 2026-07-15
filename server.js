@@ -21,11 +21,13 @@ const UI_FIX_CSS = String.raw`
 .grid-row .remaining-soon, .grid-row span.remaining-soon { color: #003b8f !important; font-weight: 950; }
 .facility-status-box { width: 100%; min-height: 54px; border-radius: 2px; background: #000; margin: 0 0 8px; }
 .facility-status-box[hidden] { display: none !important; }
-.history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 96px 104px 64px 76px minmax(140px, 1fr) !important; justify-content: stretch !important; gap: 4px !important; }
-.history-grid .grid-head span:nth-child(5), .history-grid .grid-row span:nth-child(5) { grid-column: 5 !important; text-align: center !important; }
-.history-grid .grid-row span:nth-child(5) { display: flex !important; align-items: center; justify-content: center; min-height: 34px; padding: 0 8px; border: 1px solid #0b3d4b; background: #1f6f8a; color: #fff !important; font-family: var(--sans); font-size: 14px; font-weight: 900; white-space: normal; }
-@media (min-width: 760px) { .history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 120px 150px 92px 110px minmax(190px, 1fr) !important; gap: 8px !important; } .facility-status-box { min-height: 64px; } }
-@media (max-width: 759px) { .history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 50px 57px 42px 55px minmax(112px, 1fr) !important; } .history-grid .grid-row span:nth-child(5) { min-height: 34px; font-size: 13px; padding: 0 6px; } .facility-status-box { min-height: 42px; } }
+.history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 50px 57px 42px 48px 86px minmax(112px, 1fr) !important; justify-content: stretch !important; gap: 4px !important; }
+.history-grid .grid-head span:nth-child(5), .history-grid .grid-row span:nth-child(5), .history-grid .grid-head span:nth-child(6), .history-grid .grid-row span:nth-child(6) { grid-column: auto !important; text-align: center !important; }
+.history-grid .grid-row .history-kind { display: inline-flex !important; align-items: center; justify-content: center; min-height: 26px; padding: 3px 8px; border: 0 !important; border-radius: 999px; background: #fff3d6 !important; color: #9a5b00 !important; font-family: var(--sans); font-size: 12px; font-weight: 850; white-space: nowrap; }
+.history-grid .grid-row .history-kind.available { background: #dff7ea !important; color: #0f7a45 !important; }
+.history-grid .grid-row .history-status { display: flex !important; align-items: center; justify-content: center; min-height: 34px; padding: 0 4px; border: 0 !important; background: transparent !important; color: #17211b !important; font-family: var(--sans); font-size: 12px; font-weight: 750; line-height: 1.25; white-space: normal; word-break: keep-all; }
+@media (min-width: 760px) { .history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 96px 124px 78px 90px 116px minmax(170px, 1fr) !important; gap: 8px !important; } .history-grid .grid-row .history-status { font-size: 13px; padding: 0 8px; } .facility-status-box { min-height: 64px; } }
+@media (max-width: 759px) { .facility-status-box { min-height: 42px; } }
 </style>
 <script id="codex-facility-status-box" defer>
 (() => {
