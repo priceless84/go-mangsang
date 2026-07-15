@@ -334,21 +334,42 @@ body #firstRows.history-grid .grid-row {
 (() => {
   function valueOf(v) { return String(v || "").trim(); }
   function joined(item) { return [item?.event_type, item?.eventType, item?.kind, item?.status, item?.state, item?.message].map(valueOf).join(" "); }
-  function isAvailable(item) { return /available|예약\s*가능|예약가능|예약\s*마감|Y/i.test(joined(item)); }
-  function isEnded(item) { return /종료|ended|closed|finish|complete/i.test([item?.state, item?.status, item?.message].map(valueOf).join(" ")); }
+  function isAvailable(item) { return /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(joined(item)); }
+  function isEnded(item) { return /종료|ended|closed|finish|complete|예약\s*완료|예약완료|예약\s*마감|예약마감/i.test([item?.state, item?.status, item?.message].map(valueOf).join(" ")); }
+  function normalizeStatusPhrase(text) {
+    const raw = valueOf(text);
+    if (!raw) return "";
+    if (/예약\s*완료|예약완료/i.test(raw)) return "예약완료";
+    if (/선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점/i.test(raw)) return "선점중";
+    if (/예약\s*중|예약중/i.test(raw)) return "예약중";
+    if (/예약\s*가능|예약가능/i.test(raw)) return "예약가능";
+    if (/예약\s*마감|예약마감/i.test(raw)) return "예약마감";
+    if (/발생|detected|new/i.test(raw)) return "발생";
+    return raw;
+  }
+  function explicitStatusPhrase(item) {
+    const combined = [item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.state, item?.status, item?.message, item?.event_type, item?.eventType].map(valueOf).filter(Boolean).join(" ");
+    const match = combined.match(/예약\s*완료|예약완료|선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점|예약\s*중|예약중|예약\s*가능|예약가능|예약\s*마감|예약마감|발생/i);
+    return match ? normalizeStatusPhrase(match[0]) : "";
+  }
   function installStatusOverrides() {
     window.historyKind = function historyKind(item) { return isAvailable(item) ? "예약가능" : "취소중"; };
     window.historyKindClass = function historyKindClass(item) { return isAvailable(item) ? "history-kind available" : "history-kind canceling"; };
     window.statusText = function statusText(item) {
       const state = valueOf(item?.state), status = valueOf(item?.status), message = valueOf(item?.message);
-      const combined = [state, status, message].filter(Boolean).join(" ");
+      const combined = [state, status, message, item?.statusText, item?.status_text, item?.statusLabel, item?.status_label].map(valueOf).filter(Boolean).join(" ");
       const endMatch = combined.match(/종료\s*(?:→|->|-)?\s*([^,|]*)/);
-      if (endMatch) { const tail = valueOf(endMatch[1]); return tail ? "종료 → " + tail : "종료"; }
+      if (endMatch) {
+        const tail = normalizeStatusPhrase(endMatch[1]);
+        return tail && tail !== "발생" ? "종료 → " + tail : "종료";
+      }
+      const phrase = explicitStatusPhrase(item);
+      if (phrase && phrase !== "발생") return isEnded(item) || isAvailable(item) ? "종료 → " + phrase : phrase;
       if (isEnded(item)) return "종료";
-      if (isAvailable(item)) return "종료 → 예약 가능";
-      if (state && !/^[NY]$/i.test(state) && !/canceling|available/i.test(state)) return state;
-      if (status && !/^[NY]$/i.test(status) && !/canceling|available/i.test(status)) return status;
-      return "발생";
+      if (isAvailable(item)) return "종료 → 예약가능";
+      if (state && !/^[NY]$/i.test(state) && !/canceling|available/i.test(state)) return normalizeStatusPhrase(state);
+      if (status && !/^[NY]$/i.test(status) && !/canceling|available/i.test(status)) return normalizeStatusPhrase(status);
+      return phrase || "발생";
     };
     if (typeof window.render === "function") window.render();
   }
@@ -654,12 +675,13 @@ function normalizeItem(item) {
   const rawStatus = String(item.status || item.canclYn || item.state || "").trim();
   const rawEventType = String(item.event_type || item.eventType || "").trim();
   const rawMessage = String(item.message || "").trim();
-  const inferredAvailable = /available|예약\s*가능|예약가능|예약\s*마감|Y/i.test([rawEventType, rawStatus, rawMessage].join(" "));
+  const rawStatusText = String(item.statusText || item.status_text || item.statusLabel || item.status_label || "").trim();
+  const inferredAvailable = /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test([rawEventType, rawStatus, rawMessage, rawStatusText].join(" "));
   const inferredEventType = rawEventType || (inferredAvailable ? "available" : "canceling");
   const normalizedStatus = rawStatus || (inferredEventType === "available" ? "Y" : "N");
   const id = String(item.id || [item.date || item.target_date || item.beginDate || item.resveBeginDe || "", category, roomName, item.fcltyCode || "", item.fcltyTyCode || "", item.resveNoCode || ""].join("|"));
   const detectedAt = item.detectedAt || item.detected_at || item.time || item.detected || item.detectedTime || item.received_at || new Date().toISOString();
-  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, message: rawMessage, detectedAt };
+  return { id, date: String(item.date || item.target_date || item.beginDate || item.resveBeginDe || "-"), category, roomName, fcltyCode: String(item.fcltyCode || ""), fcltyTyCode: String(item.fcltyTyCode || ""), resveNoCode: String(item.resveNoCode || ""), status: normalizedStatus, state: String(item.state || ""), event_type: inferredEventType, statusText: rawStatusText, message: rawMessage, detectedAt };
 }
 
 function parseDetailText(text) {
@@ -705,9 +727,12 @@ function eventForState(item) {
   const rawStatus = String(item.status || "").trim();
   const rawState = String(item.state || "").trim();
   const rawMessage = String(item.message || "").trim();
-  const isAvailable = /available|예약\s*가능|예약가능|예약\s*마감|Y/i.test([rawEventType, rawStatus, rawState, rawMessage].join(" "));
+  const rawStatusText = String(item.statusText || item.status_text || item.statusLabel || item.status_label || "").trim();
+  const combinedStatus = [rawEventType, rawStatus, rawState, rawMessage, rawStatusText].join(" ");
+  const isAvailable = /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(combinedStatus);
   const eventType = rawEventType || (isAvailable ? "available" : "canceling");
-  return { client: item.source || state.monitor.source || "go-mangsang", event_type: eventType, status: rawStatus || (isAvailable ? "Y" : "N"), state: rawState || (isAvailable ? "종료 → 예약 가능" : "발생"), target_date: item.date, facility: item.category, room: item.roomName, room_name: item.roomName, detected_at: item.detectedAt, received_at: item.detectedAt, message: rawMessage || [item.date, item.category, item.roomName].join(" ").trim() };
+  const stateText = rawState || rawStatusText || (isAvailable ? "종료" : "발생");
+  return { client: item.source || state.monitor.source || "go-mangsang", event_type: eventType, status: rawStatus || (isAvailable ? "Y" : "N"), state: stateText, statusText: rawStatusText, target_date: item.date, facility: item.category, room: item.roomName, room_name: item.roomName, detected_at: item.detectedAt, received_at: item.detectedAt, message: rawMessage || rawStatusText || [item.date, item.category, item.roomName].join(" ").trim() };
 }
 
 function handleHeartbeatPayload(payload) {
@@ -795,7 +820,20 @@ async function syncStateSignal() {
 function upsertEvents(items) {
   const map = new Map(state.events.map(item => [item.id, item]));
   for (const item of items) {
-    if (!map.has(item.id)) map.set(item.id, item);
+    const previous = map.get(item.id);
+    if (!previous) {
+      map.set(item.id, item);
+      continue;
+    }
+    map.set(item.id, {
+      ...previous,
+      status: item.status || previous.status,
+      state: item.state || previous.state,
+      event_type: item.event_type || previous.event_type,
+      statusText: item.statusText || item.status_text || item.statusLabel || item.status_label || previous.statusText,
+      message: item.message || previous.message,
+      detectedAt: previous.detectedAt || item.detectedAt
+    });
   }
   state.events = Array.from(map.values())
     .sort((a, b) => new Date(a.detectedAt).getTime() - new Date(b.detectedAt).getTime())
