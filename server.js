@@ -694,6 +694,56 @@ body #firstRows.history-grid .grid-row > * {
     });
   }
 
+  function formatHistoryDetected(value) {
+    const raw = valueOf(value);
+    if (!raw) return "";
+    const timeMatch = raw.match(/(d{1,2}):(d{2})(?::d{2})?/);
+    if (timeMatch) return timeMatch[1].padStart(2, "0") + ":" + timeMatch[2];
+    const date = new Date(raw);
+    if (!Number.isNaN(date.getTime())) return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
+    return raw;
+  }
+
+  function firstValueOf(...values) {
+    for (const value of values) {
+      const text = valueOf(value);
+      if (text) return text;
+    }
+    return "";
+  }
+
+  function historyRecordFromEvent(item, forcedKind) {
+    const rawKind = forcedKind || valueOf(item?.kind) || valueOf(item?.event_type) || valueOf(item?.eventType);
+    const kind = /available|예약s*가능|예약가능|예약s*마감|예약마감|예약s*완료|예약완료|선점|예약s*중|예약중|Y/i.test(joined({ ...item, kind: rawKind })) ? "예약가능" : "취소중";
+    const detected = formatHistoryDetected(firstValueOf(item?.detected, item?.detected_at, item?.detectedAt, item?.received_at, item?.receivedAt, item?.time, item?.created_at, item?.createdAt, item?.updated_at, item?.updatedAt));
+    const rawStatus = typeof statusText === "function" ? statusText(item) : firstValueOf(item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.state, item?.status);
+    return normalizeHistoryRecord({
+      date: firstValueOf(item?.date, item?.target_date, item?.targetDate, item?.beginDate, item?.resveBeginDe),
+      facility: firstValueOf(item?.facility, item?.category, item?.fcltyNm, item?.area),
+      room: firstValueOf(item?.room, item?.room_name, item?.roomName, item?.roomNo, item?.room_no),
+      detected,
+      kind,
+      status: rawStatus || (kind === "취소중" ? "취소 진행중" : "발생")
+    });
+  }
+
+  async function syncHistoryFromServer() {
+    if (typeof fetch !== "function") return;
+    try {
+      const response = await fetch("/api/events?codex_history_restore=" + Date.now(), { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = await response.json();
+      const fromEvents = Array.isArray(payload.events) ? payload.events.map(item => historyRecordFromEvent(item)) : [];
+      const fromActive = Array.isArray(payload.active) ? payload.active.map(item => historyRecordFromEvent({ ...item, event_type: "canceling", state: "취소 진행중", statusText: "취소 진행중" }, "취소중")) : [];
+      const merged = mergeHistoryRecords(loadStoredHistory(), readRowsAsHistory("#firstRows.history-grid", "history"), readRowsAsHistory("#activeRows", "active"), fromEvents, fromActive);
+      if (merged.length) {
+        saveStoredHistory(merged);
+        renderStoredHistory(merged);
+        applyRoomCapacityLabels();
+      }
+    } catch (_) {}
+  }
+
   function syncPersistentHistory() {
     const stored = loadStoredHistory();
     const fromHistory = readRowsAsHistory("#firstRows.history-grid", "history");
@@ -706,7 +756,7 @@ body #firstRows.history-grid .grid-row > * {
     }
   }
 
-  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); applyRoomCapacityLabels(); syncPersistentHistory(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setInterval(applyRoomCapacityLabels, 1000); setInterval(syncPersistentHistory, 3000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); setTimeout(applyRoomCapacityLabels, 1300); setTimeout(syncPersistentHistory, 1500); }
+  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); applyRoomCapacityLabels(); syncPersistentHistory(); syncHistoryFromServer(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setInterval(applyRoomCapacityLabels, 1000); setInterval(syncPersistentHistory, 3000); setInterval(syncHistoryFromServer, 10000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); setTimeout(applyRoomCapacityLabels, 1300); setTimeout(syncPersistentHistory, 1500); setTimeout(syncHistoryFromServer, 700); setTimeout(syncHistoryFromServer, 2500); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
 </script>`;
