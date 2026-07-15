@@ -572,13 +572,16 @@ body #firstRows.history-grid .grid-row > * {
   }
 
   function normalizeHistoryRecord(record) {
+    const kind = valueOf(record.kind) || "취소중";
+    const rawStatus = valueOf(record.status) || "발생";
+    const status = /취소/.test(kind) && rawStatus === "발생" ? "취소 진행중" : rawStatus;
     return {
       date: valueOf(record.date),
       facility: valueOf(record.facility),
       room: roomWithCapacity(valueOf(record.room), record),
       detected: valueOf(record.detected),
-      kind: valueOf(record.kind) || "취소중",
-      status: valueOf(record.status) || "발생"
+      kind,
+      status
     };
   }
 
@@ -656,7 +659,7 @@ body #firstRows.history-grid .grid-row > * {
       row.appendChild(kind);
       const status = document.createElement("span");
       status.className = "history-status";
-      status.textContent = item.status || "발생";
+      status.textContent = /취소/.test(item.kind || "") && (item.status || "발생") === "발생" ? "취소 진행중" : (item.status || "발생");
       row.appendChild(status);
       wrap.appendChild(row);
     });
