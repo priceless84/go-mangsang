@@ -373,7 +373,22 @@ body #firstRows.history-grid .grid-row > * {
 <script id="codex-facility-status-box" defer>
 (() => {
   function valueOf(v) { return String(v || "").trim(); }
+  const DEUNBADA_CAPACITY_MAP = {
+    "101": "8", "102": "4", "103": "4", "104": "2", "105": "2", "106": "10", "107": "2", "108": "2", "109": "4", "110": "8", "111": "4", "112": "6", "113": "2", "114": "2", "115": "6", "116": "4", "117": "2", "118": "2", "119": "6", "120": "4", "121": "4", "122": "4", "123": "4"
+  };
+  function roomNumberOf(room) {
+    const match = valueOf(room).match(/(\d+)\s*번?/);
+    return match ? match[1] : "";
+  }
+  function mappedCapacity(item) {
+    const facility = valueOf(item?.facility || item?.category || item?.categoryName || item?.name || item?.fcltyNm);
+    if (!/든바다/.test(facility)) return "";
+    const roomNo = roomNumberOf(item?.room || item?.roomName || item?.room_name || item?.name || item?.raw);
+    return DEUNBADA_CAPACITY_MAP[roomNo] || "";
+  }
   function capacityOf(item) {
+    const mapped = mappedCapacity(item || {});
+    if (mapped) return mapped;
     const direct = valueOf(item?.capacity || item?.people || item?.person || item?.persons || item?.headcount || item?.cnt || item?.inwon || item?.roomCapacity || item?.capacityText);
     if (!direct || direct === "2") return "";
     if (/^\d+$/.test(direct)) return direct;
@@ -382,7 +397,7 @@ body #firstRows.history-grid .grid-row > * {
   }
   function roomWithCapacity(room, item) {
     const base = valueOf(room).replace(/\s*\(\d+\s*인\)\s*$/, "");
-    const capacity = capacityOf(item);
+    const capacity = capacityOf({ ...(item || {}), room: base, roomName: base });
     return base && capacity ? base + "(" + capacity + "인)" : base;
   }
   function applyRoomCapacityLabels() {
@@ -391,10 +406,9 @@ body #firstRows.history-grid .grid-row > * {
       if (!cells || cells.length < 3) return;
       const roomCell = cells[2];
       const current = valueOf(roomCell.textContent);
-      if (!current || /\(\d+\s*인\)/.test(current)) return;
-      const rowText = valueOf(row.textContent);
-      const match = rowText.match(/(\d+)\s*(?:인|명)/);
-      if (match) roomCell.textContent = current + "(" + match[1] + "인)";
+      if (!current) return;
+      const facility = valueOf(cells[1]?.textContent);
+      roomCell.textContent = roomWithCapacity(current, { facility, category: facility, room: current, roomName: current });
     });
   }
   function joined(item) { return [item?.event_type, item?.eventType, item?.kind, item?.status, item?.state, item?.message].map(valueOf).join(" "); }
@@ -862,7 +876,25 @@ function valueOfServer(v) {
   return String(v || "").trim();
 }
 
+const DEUNBADA_CAPACITY_MAP_SERVER = {
+  "101": "8", "102": "4", "103": "4", "104": "2", "105": "2", "106": "10", "107": "2", "108": "2", "109": "4", "110": "8", "111": "4", "112": "6", "113": "2", "114": "2", "115": "6", "116": "4", "117": "2", "118": "2", "119": "6", "120": "4", "121": "4", "122": "4", "123": "4"
+};
+
+function roomNumberOfServer(room) {
+  const match = valueOfServer(room).match(/(\d+)\s*번?/);
+  return match ? match[1] : "";
+}
+
+function mappedCapacityServer(item) {
+  const facility = valueOfServer(item.facility || item.category || item.categoryName || item.name || item.fcltyNm);
+  if (!/든바다/.test(facility)) return "";
+  const roomNo = roomNumberOfServer(item.room || item.roomName || item.room_name || item.name || item.raw);
+  return DEUNBADA_CAPACITY_MAP_SERVER[roomNo] || "";
+}
+
 function capacityOf(item) {
+  const mapped = mappedCapacityServer(item || {});
+  if (mapped) return mapped;
   const direct = valueOfServer(item.capacity || item.people || item.person || item.persons || item.headcount || item.cnt || item.inwon || item.roomCapacity || item.capacityText);
   if (!direct || direct === "2") return "";
   if (/^\d+$/.test(direct)) return direct;
@@ -872,7 +904,7 @@ function capacityOf(item) {
 
 function roomWithCapacity(room, item) {
   const base = valueOfServer(room).replace(/\s*\(\d+\s*인\)\s*$/, "");
-  const capacity = capacityOf(item || {});
+  const capacity = capacityOf({ ...(item || {}), room: base, roomName: base });
   return base && capacity ? base + "(" + capacity + "인)" : base;
 }
 
@@ -920,8 +952,8 @@ function eventStatusText(item, previous = {}) {
 function normalizeItem(item) {
   const category = normalizeCategoryFromItem(item);
   const roomName = normalizeRoomName(item.roomName || item.room_name || item.room || item.fcltyNm || item.nameCol, category);
-  const capacity = capacityOf(item);
-  const displayRoomName = roomWithCapacity(roomName, { ...item, capacity });
+  const capacity = capacityOf({ ...item, category, facility: category, room: roomName, roomName });
+  const displayRoomName = roomWithCapacity(roomName, { ...item, category, facility: category, capacity });
   const rawStatus = String(item.status || item.canclYn || item.state || "").trim();
   const rawEventType = String(item.event_type || item.eventType || "").trim();
   const rawMessage = String(item.message || "").trim();
