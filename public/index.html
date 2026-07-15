@@ -1319,7 +1319,7 @@
       const message = String(row.message || "").trim();
       if (raw && raw !== "Y" && raw !== "N") return raw;
       if (message.includes("종료")) {
-        const match = message.match(/종료s*[→>-]s*([^|]+)/);
+        const match = message.match(/종료\s*[→>-]\s*([^|]+)/);
         return match ? `종료 → ${match[1].trim()}` : "종료";
       }
       if (raw === "Y" || historyKind(row) === "예약가능") return "종료 → 예약 가능";
