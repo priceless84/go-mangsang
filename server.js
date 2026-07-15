@@ -16,6 +16,16 @@ const MAX_EVENTS = 2000;
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || "6185";
 const STATE_SIGNAL_URL = process.env.STATE_SIGNAL_URL || "https://mangsang-alarm-dashboard.onrender.com/api/state";
 const LOCAL_REPORT_FRESH_MS = 180 * 1000;
+const UI_FIX_CSS = [
+  "<style id=\"codex-ui-fixes\">",
+  ".grid-row .remaining-soon, .grid-row span.remaining-soon { color: #003b8f !important; font-weight: 950; }",
+  ".history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 96px 104px 64px 76px 76px 82px !important; }",
+  ".history-grid .grid-head span:nth-child(5), .history-grid .grid-row span:nth-child(5) { grid-column: 5 / span 2 !important; }",
+  "@media (min-width: 760px) { .history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 112px 132px 84px 96px 96px 104px !important; } }",
+  "@media (max-width: 759px) { .history-grid .grid-head, .history-grid .grid-row { grid-template-columns: 50px 51px 42px 44px 44px 61px !important; } }",
+  "</style>"
+].join("\n");
+
 
 const state = {
   startedAt: new Date().toISOString(),
@@ -360,6 +370,13 @@ function safeJoinPublic(urlPath) {
   return target;
 }
 
+function patchHtmlResponse(filePath, content) {
+  if (path.basename(filePath) !== "index.html") return content;
+  const html = content.toString("utf8");
+  if (html.includes("codex-ui-fixes") || !html.includes("</head>")) return html;
+  return html.replace("</head>", `undefined\n</head>`);
+}
+
 function sendStatic(req, res) {
   const filePath = safeJoinPublic(new URL(req.url, `http://${req.headers.host}`).pathname);
   if (!filePath) {
@@ -372,11 +389,13 @@ function sendStatic(req, res) {
       sendText(res, error.code === "ENOENT" ? 404 : 500, error.code === "ENOENT" ? "Not Found" : "Server Error");
       return;
     }
+    const responseType = contentTypeFor(filePath);
+    const responseBody = responseType.startsWith("text/html") ? patchHtmlResponse(filePath, content) : content;
     res.writeHead(200, {
-      "Content-Type": contentTypeFor(filePath),
+      "Content-Type": responseType,
       "Cache-Control": "no-store"
     });
-    res.end(content);
+    res.end(responseBody);
   });
 }
 
