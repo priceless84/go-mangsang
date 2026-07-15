@@ -310,6 +310,25 @@ body #firstRows.history-grid .grid-row .history-status {
     font-size: 12px !important;
   }
 }
+
+/* align history rows with active rows */
+body #firstRows.history-grid .grid-row .history-kind,
+body #firstRows.history-grid .grid-row span:nth-child(5).history-kind,
+body #firstRows.history-grid .grid-row .history-status {
+  display: block !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  line-height: 1.18 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  text-align: center !important;
+}
+body #firstRows.history-grid .grid-row {
+  min-height: 33px !important;
+  align-items: center !important;
+}
 </style>
 <script id="codex-facility-status-box" defer>
 (() => {
