@@ -551,7 +551,128 @@ body #firstRows.history-grid .grid-row > * {
     });
   }
 
-  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); applyRoomCapacityLabels(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setInterval(applyRoomCapacityLabels, 1000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); setTimeout(applyRoomCapacityLabels, 1300); }
+
+  const HISTORY_STORE_KEY = "goMangsangFirstDetectedHistoryV1";
+
+  function loadStoredHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(HISTORY_STORE_KEY) || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveStoredHistory(items) {
+    try {
+      localStorage.setItem(HISTORY_STORE_KEY, JSON.stringify(items.slice(-500)));
+    } catch (_) {}
+  }
+
+  function normalizeHistoryRecord(record) {
+    return {
+      date: valueOf(record.date),
+      facility: valueOf(record.facility),
+      room: roomWithCapacity(valueOf(record.room), record),
+      detected: valueOf(record.detected),
+      kind: valueOf(record.kind) || "취소중",
+      status: valueOf(record.status) || "발생"
+    };
+  }
+
+  function historyKey(record) {
+    return [record.date, record.facility, record.room].join("|");
+  }
+
+  function readRowsAsHistory(selector, mode) {
+    return Array.from(document.querySelectorAll(selector + " .grid-row")).map(row => {
+      const cells = Array.from(row.children).map(cell => valueOf(cell.textContent));
+      if (mode === "active" && cells.length >= 4) {
+        return normalizeHistoryRecord({ date: cells[0], facility: cells[1], room: cells[2], detected: cells[3], kind: "취소중", status: "발생" });
+      }
+      if (mode === "history" && cells.length >= 6) {
+        return normalizeHistoryRecord({ date: cells[0], facility: cells[1], room: cells[2], detected: cells[3], kind: cells[4], status: cells[5] });
+      }
+      return null;
+    }).filter(item => item && item.date && item.facility && item.room && item.detected && !item.date.includes("없습니다"));
+  }
+
+  function mergeHistoryRecords(...groups) {
+    const map = new Map();
+    groups.flat().forEach(item => {
+      const record = normalizeHistoryRecord(item || {});
+      if (!record.date || !record.facility || !record.room || !record.detected) return;
+      const key = historyKey(record);
+      const prev = map.get(key);
+      if (!prev) {
+        map.set(key, record);
+        return;
+      }
+      map.set(key, {
+        ...prev,
+        kind: record.kind || prev.kind,
+        status: record.status && record.status !== "발생" ? record.status : prev.status,
+        detected: prev.detected || record.detected
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => (a.date + a.facility + a.room).localeCompare(b.date + b.facility + b.room, "ko"));
+  }
+
+  function renderStoredHistory(items) {
+    const wrap = document.querySelector("#firstRows.history-grid");
+    if (!wrap) return;
+    let head = wrap.querySelector(".grid-head");
+    if (!head) {
+      head = document.createElement("div");
+      head.className = "grid-head";
+      ["날짜", "시설", "객실", "감지", "종류", "상태"].forEach(text => {
+        const span = document.createElement("span");
+        span.textContent = text;
+        head.appendChild(span);
+      });
+    }
+    wrap.innerHTML = "";
+    wrap.appendChild(head);
+    if (!items.length) {
+      const empty = document.createElement("div");
+      empty.className = "grid-row empty";
+      empty.textContent = "누적 감지 기록이 없습니다.";
+      wrap.appendChild(empty);
+      return;
+    }
+    items.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "grid-row";
+      [item.date, item.facility, item.room, item.detected].forEach(text => {
+        const span = document.createElement("span");
+        span.textContent = text;
+        row.appendChild(span);
+      });
+      const kind = document.createElement("span");
+      kind.className = "history-kind " + (/예약/.test(item.kind) ? "available" : "canceling");
+      kind.textContent = item.kind || "취소중";
+      row.appendChild(kind);
+      const status = document.createElement("span");
+      status.className = "history-status";
+      status.textContent = item.status || "발생";
+      row.appendChild(status);
+      wrap.appendChild(row);
+    });
+  }
+
+  function syncPersistentHistory() {
+    const stored = loadStoredHistory();
+    const fromHistory = readRowsAsHistory("#firstRows.history-grid", "history");
+    const fromActive = readRowsAsHistory("#activeRows", "active");
+    const merged = mergeHistoryRecords(stored, fromHistory, fromActive);
+    if (merged.length) {
+      saveStoredHistory(merged);
+      renderStoredHistory(merged);
+      applyRoomCapacityLabels();
+    }
+  }
+
+  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); applyRoomCapacityLabels(); syncPersistentHistory(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setInterval(applyRoomCapacityLabels, 1000); setInterval(syncPersistentHistory, 1000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); setTimeout(applyRoomCapacityLabels, 1300); setTimeout(syncPersistentHistory, 1500); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
 </script>`;
@@ -1020,9 +1141,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/events") {
       await syncStateSignal();
+      const active = activeForView();
+      if (active.length > 0) upsertEvents(active);
       sendJson(res, 200, {
         ok: true,
-        active: activeForView(),
+        active,
         events: state.events.slice().reverse(),
         config: state.config,
         monitorError,
