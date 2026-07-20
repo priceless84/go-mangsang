@@ -20,229 +20,11 @@ const STATE_SIGNAL_URL = process.env.STATE_SIGNAL_URL || "https://mangsang-alarm
 const LOCAL_REPORT_FRESH_MS = 180 * 1000;
 const UI_FIX_CSS = String.raw`
 <style id="codex-ui-fixes">
-#activeRows,
-#firstRows.history-grid {
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-}
-#activeRows .grid-head,
-#activeRows .grid-row,
-#firstRows.history-grid .grid-head,
-#firstRows.history-grid .grid-row {
-  grid-template-columns: 54px 68px 52px 54px 68px 86px !important;
-  min-width: 382px !important;
-  justify-content: stretch !important;
-  gap: 4px !important;
-  align-items: center !important;
-}
-#activeRows .grid-head > *, #activeRows .grid-row > *, #firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * {
-  min-width: 0 !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; white-space: nowrap !important; text-align: center !important;
-  font-size: 12px !important;
-  letter-spacing: 0 !important;
-}
-#activeRows .grid-row .remaining-soon, #activeRows .grid-row span.remaining-soon, .grid-row .remaining-soon, .grid-row span.remaining-soon {
-  display: inline !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; border-radius: 0 !important; background: transparent !important; color: #c40000 !important; font-weight: 950 !important; box-shadow: none !important;
-}
-.facility-status-box { width: 100%; min-height: 54px; border-radius: 2px; background: #000; margin: 0 0 8px; }
-.facility-status-box[hidden] { display: none !important; }
-#firstRows.history-grid .grid-head span:nth-child(5), #firstRows.history-grid .grid-row span:nth-child(5), #firstRows.history-grid .grid-head span:nth-child(6), #firstRows.history-grid .grid-row span:nth-child(6) { grid-column: auto !important; text-align: center !important; }
-#firstRows.history-grid .grid-row .history-kind, #firstRows.history-grid .grid-row span:nth-child(5).history-kind {
-  display: inline-flex !important; align-items: center !important; justify-content: center !important; min-width: 0 !important; width: 100% !important; min-height: 26px !important; padding: 0 2px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: #a36300 !important; font-family: var(--sans) !important; font-size: 12px !important; font-weight: 900 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: clip !important;
-}
-#firstRows.history-grid .grid-row .history-kind.available, #firstRows.history-grid .grid-row span:nth-child(5).history-kind.available { background: transparent !important; color: #08783f !important; }
-#firstRows.history-grid .grid-row .history-status {
-  display: flex !important; align-items: center !important; justify-content: center !important; min-height: 34px !important; padding: 0 4px !important; border: 0 !important; background: transparent !important; color: #17211b !important; font-family: var(--sans) !important; font-size: 12px !important; font-weight: 850 !important; line-height: 1.2 !important; white-space: normal !important; word-break: keep-all !important; overflow-wrap: anywhere !important;
-}
-@media (min-width: 760px) { #activeRows .grid-head, #activeRows .grid-row, #firstRows.history-grid .grid-head, #firstRows.history-grid .grid-row { grid-template-columns: 96px 124px 78px 90px 116px 170px !important; min-width: 674px !important; gap: 8px !important; } #activeRows .grid-head > *, #activeRows .grid-row > *, #firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * { font-size: 13px !important; } #firstRows.history-grid .grid-row .history-status { font-size: 13px !important; padding: 0 8px !important; } .facility-status-box { min-height: 64px; } }
-@media (max-width: 759px) { .facility-status-box { min-height: 42px; } }
-
-.codex-live-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 12px 14px;
-  border: 1px solid #cfe0d7;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 8px 22px rgba(25, 48, 38, .08);
-}
-.codex-live-summary .summary-cell {
-  min-width: 0;
-  text-align: center;
-  border-right: 1px solid #e0ebe5;
-}
-.codex-live-summary .summary-cell:last-child { border-right: 0; }
-.codex-live-summary .summary-label {
-  display: block;
-  margin-bottom: 5px;
-  color: #52665c;
-  font-size: 12px;
-  font-weight: 800;
-}
-.codex-live-summary .summary-value {
-  display: block;
-  color: #071a33;
-  font-size: 20px;
-  font-weight: 950;
-  line-height: 1.15;
-  white-space: nowrap;
-}
-@media (max-width: 520px) {
-  .codex-live-summary {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
-    padding: 10px 8px;
-  }
-  .codex-live-summary .summary-cell:nth-child(2) { border-right: 1px solid #e0ebe5; }
-  .codex-live-summary .summary-value { font-size: 15px; }
-}
-
-
-body #activeRows .grid-row .remaining-soon,
-body #activeRows .grid-row span.remaining-soon,
-body .grid-row .remaining-soon,
-body .grid-row span.remaining-soon {
-  display: inline !important;
-  width: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  color: #c40000 !important;
-  font-weight: 950 !important;
-  box-shadow: none !important;
-}
-
-
-/* compact mobile layout cleanup */
 body .facility-status-box { display: none !important; }
-body .panel.controls { gap: 10px !important; }
-body .panel.controls button,
-body .panel.controls .chip,
-body .panel.controls label,
-body .panel.controls .segmented button,
-body .panel.controls .date-mode button,
-body .panel.controls input[type="button"] {
-  min-height: 40px !important;
-  height: 40px !important;
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
-}
-body .panel.controls input[type="date"],
-body .panel.controls input:not([type]),
-body .panel.controls select {
-  min-height: 40px !important;
-  height: 40px !important;
-  padding-top: 6px !important;
-  padding-bottom: 6px !important;
-}
-body .codex-live-summary {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 0 !important;
-  margin: 10px 0 2px !important;
-  padding: 10px 8px !important;
-  border-radius: 8px !important;
-}
-body .codex-live-summary .summary-cell {
-  border-right: 1px solid #e0ebe5 !important;
-  padding: 0 4px !important;
-}
-body .codex-live-summary .summary-cell:last-child { border-right: 0 !important; }
-body .codex-live-summary .summary-label {
-  margin-bottom: 4px !important;
-  font-size: 11px !important;
-  line-height: 1.1 !important;
-}
-body .codex-live-summary .summary-value {
-  font-size: 16px !important;
-  line-height: 1.15 !important;
-  white-space: nowrap !important;
-}
-body #activeRows,
-body #firstRows.history-grid {
-  overflow-x: hidden !important;
-}
-body #activeRows .grid-head,
-body #activeRows .grid-row,
-body #firstRows.history-grid .grid-head,
-body #firstRows.history-grid .grid-row {
-  grid-template-columns: 44px 58px 44px 48px 54px minmax(58px, 1fr) !important;
-  min-width: 0 !important;
-  width: 100% !important;
-  gap: 3px !important;
-}
-body #activeRows .grid-head > *,
-body #activeRows .grid-row > *,
-body #firstRows.history-grid .grid-head > *,
-body #firstRows.history-grid .grid-row > * {
-  font-size: 11px !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  white-space: nowrap !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-body #activeRows .grid-row .remaining-soon,
-body #activeRows .grid-row span.remaining-soon,
-body .grid-row .remaining-soon,
-body .grid-row span.remaining-soon {
-  display: inline !important;
-  width: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  color: #c40000 !important;
-  font-weight: 950 !important;
-  box-shadow: none !important;
-}
-@media (max-width: 390px) {
-  body .codex-live-summary .summary-label { font-size: 10px !important; }
-  body .codex-live-summary .summary-value { font-size: 14px !important; }
-  body #activeRows .grid-head,
-  body #activeRows .grid-row,
-  body #firstRows.history-grid .grid-head,
-  body #firstRows.history-grid .grid-row {
-    grid-template-columns: 42px 55px 42px 45px 50px minmax(54px, 1fr) !important;
-    gap: 2px !important;
-  }
-  body #activeRows .grid-head > *,
-  body #activeRows .grid-row > *,
-  body #firstRows.history-grid .grid-head > *,
-  body #firstRows.history-grid .grid-row > * { font-size: 10.5px !important; }
-}
-@media (min-width: 760px) {
-  body .codex-live-summary .summary-value { font-size: 20px !important; }
-  body #activeRows .grid-head,
-  body #activeRows .grid-row,
-  body #firstRows.history-grid .grid-head,
-  body #firstRows.history-grid .grid-row {
-    grid-template-columns: 96px 124px 78px 90px 116px minmax(170px, 1fr) !important;
-    gap: 8px !important;
-  }
-  body #activeRows .grid-head > *,
-  body #activeRows .grid-row > *,
-  body #firstRows.history-grid .grid-head > *,
-  body #firstRows.history-grid .grid-row > * { font-size: 13px !important; }
-}
-
-
-/* readability and compact controls pass */
 body .panel.controls {
   gap: 6px !important;
   padding-top: 12px !important;
   padding-bottom: 12px !important;
-}
-body .panel.controls .field-title,
-body .panel.controls h2,
-body .panel.controls h3 {
-  margin-bottom: 4px !important;
-  line-height: 1.15 !important;
 }
 body .panel.controls button,
 body .panel.controls .chip,
@@ -263,18 +45,69 @@ body .panel.controls select {
   padding-top: 4px !important;
   padding-bottom: 4px !important;
 }
+body .codex-live-summary {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0 !important;
+  margin: 10px 0 2px !important;
+  padding: 10px 8px !important;
+  border: 1px solid #cfe0d7 !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  box-shadow: 0 8px 22px rgba(25, 48, 38, .08) !important;
+}
+body .codex-live-summary .summary-cell {
+  min-width: 0 !important;
+  text-align: center !important;
+  border-right: 1px solid #e0ebe5 !important;
+  padding: 0 4px !important;
+}
+body .codex-live-summary .summary-cell:last-child { border-right: 0 !important; }
+body .codex-live-summary .summary-label {
+  display: block !important;
+  margin-bottom: 4px !important;
+  color: #52665c !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+}
+body .codex-live-summary .summary-value {
+  display: block !important;
+  color: #071a33 !important;
+  font-size: 16px !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+}
+body #activeRows,
+body #firstRows.history-grid {
+  overflow-x: hidden !important;
+  width: 100% !important;
+}
 body #activeRows .grid-head,
 body #activeRows .grid-row,
 body #firstRows.history-grid .grid-head,
 body #firstRows.history-grid .grid-row {
-  grid-template-columns: 43px 56px 42px 46px 50px minmax(60px, 1fr) !important;
+  display: grid !important;
+  grid-template-columns: 40px 51px 64px 42px 43px minmax(61px, 1fr) !important;
+  min-width: 0 !important;
+  width: 100% !important;
   gap: 2px !important;
+  align-items: center !important;
 }
 body #activeRows .grid-head > *,
 body #activeRows .grid-row > *,
 body #firstRows.history-grid .grid-head > *,
 body #firstRows.history-grid .grid-row > * {
-  font-size: 12px !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+  font-size: 11.5px !important;
   font-weight: 900 !important;
   line-height: 1.18 !important;
   letter-spacing: 0 !important;
@@ -283,21 +116,48 @@ body #activeRows .grid-row .remaining-soon,
 body #activeRows .grid-row span.remaining-soon,
 body .grid-row .remaining-soon,
 body .grid-row span.remaining-soon {
+  display: inline !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #df0000 !important;
   font-size: 12px !important;
   font-weight: 950 !important;
+  text-shadow: 0 0 0 #df0000 !important;
+  box-shadow: none !important;
 }
 body #firstRows.history-grid .grid-row .history-kind,
-body #firstRows.history-grid .grid-row span:nth-child(5).history-kind,
 body #firstRows.history-grid .grid-row .history-status {
-  font-size: 12px !important;
+  display: block !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  line-height: 1.18 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  text-align: center !important;
+  font-size: 11.5px !important;
   font-weight: 900 !important;
 }
+body #firstRows.history-grid .grid-row .history-kind.canceling { color: #a36300 !important; }
+body #firstRows.history-grid .grid-row .history-kind.available { color: #08783f !important; }
+body #firstRows.history-grid .grid-row .history-status { color: #17211b !important; }
+body #firstRows.history-grid .grid-row .history-status.ended { color: #075985 !important; }
+body #firstRows.history-grid .grid-row { min-height: 33px !important; }
 @media (max-width: 390px) {
   body #activeRows .grid-head,
   body #activeRows .grid-row,
   body #firstRows.history-grid .grid-head,
   body #firstRows.history-grid .grid-row {
-    grid-template-columns: 40px 52px 40px 43px 47px minmax(52px, 1fr) !important;
+    grid-template-columns: 38px 48px 62px 40px 41px minmax(56px, 1fr) !important;
     gap: 1px !important;
   }
   body #activeRows .grid-head > *,
@@ -305,479 +165,203 @@ body #firstRows.history-grid .grid-row .history-status {
   body #firstRows.history-grid .grid-head > *,
   body #firstRows.history-grid .grid-row > *,
   body #firstRows.history-grid .grid-row .history-kind,
-  body #firstRows.history-grid .grid-row span:nth-child(5).history-kind,
-  body #firstRows.history-grid .grid-row .history-status {
-    font-size: 12px !important;
-  }
+  body #firstRows.history-grid .grid-row .history-status { font-size: 11px !important; }
 }
-
-/* align history rows with active rows */
-body #firstRows.history-grid .grid-row .history-kind,
-body #firstRows.history-grid .grid-row span:nth-child(5).history-kind,
-body #firstRows.history-grid .grid-row .history-status {
-  display: block !important;
-  min-height: 0 !important;
-  height: auto !important;
-  padding: 0 !important;
-  line-height: 1.18 !important;
-  white-space: nowrap !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  text-align: center !important;
-}
-body #firstRows.history-grid .grid-row {
-  min-height: 33px !important;
-  align-items: center !important;
-}
-
-/* show capacity beside room without horizontal scroll */
-body #activeRows .grid-head,
-body #activeRows .grid-row,
-body #firstRows.history-grid .grid-head,
-body #firstRows.history-grid .grid-row {
-  grid-template-columns: 39px 50px 64px 42px 44px minmax(52px, 1fr) !important;
-  gap: 2px !important;
-}
-body #activeRows .grid-head > *,
-body #activeRows .grid-row > *,
-body #firstRows.history-grid .grid-head > *,
-body #firstRows.history-grid .grid-row > * {
-  font-size: 11.5px !important;
-  letter-spacing: 0 !important;
-}
-@media (max-width: 390px) {
+@media (min-width: 760px) {
+  body .codex-live-summary .summary-value { font-size: 20px !important; }
   body #activeRows .grid-head,
   body #activeRows .grid-row,
   body #firstRows.history-grid .grid-head,
   body #firstRows.history-grid .grid-row {
-    grid-template-columns: 38px 49px 63px 41px 43px minmax(50px, 1fr) !important;
-    gap: 1px !important;
+    grid-template-columns: 96px 124px 120px 90px 104px minmax(160px, 1fr) !important;
+    gap: 8px !important;
   }
   body #activeRows .grid-head > *,
   body #activeRows .grid-row > *,
   body #firstRows.history-grid .grid-head > *,
-  body #firstRows.history-grid .grid-row > * {
-    font-size: 11px !important;
-  }
-}
-@media (min-width: 760px) {
-  body #activeRows .grid-head,
-  body #activeRows .grid-row,
-  body #firstRows.history-grid .grid-head,
-  body #firstRows.history-grid .grid-row {
-    grid-template-columns: 96px 124px 112px 90px 116px minmax(154px, 1fr) !important;
-    gap: 8px !important;
-  }
+  body #firstRows.history-grid .grid-row > *,
+  body #firstRows.history-grid .grid-row .history-kind,
+  body #firstRows.history-grid .grid-row .history-status { font-size: 13px !important; }
 }
 </style>
-<script id="codex-facility-status-box" defer>
+<script id="codex-dashboard-refine" defer>
 (() => {
-  function valueOf(v) { return String(v || "").trim(); }
-  const DEUNBADA_CAPACITY_MAP = {
-    "101": "8", "102": "4", "103": "4", "104": "2", "105": "2", "106": "10", "107": "2", "108": "2", "109": "4", "110": "8", "111": "4", "112": "6", "113": "2", "114": "2", "115": "6", "116": "4", "117": "2", "118": "2", "119": "6", "120": "4", "121": "4", "122": "4", "123": "4"
+  const HISTORY_STORE_KEY = "goMangsangFirstDetectedHistoryV2";
+  const CAPACITY = {
+    "든바다": {"101":"8","102":"4","103":"4","104":"2","105":"2","106":"10","107":"2","108":"2","109":"4","110":"8","111":"4","112":"6","113":"2","114":"2","115":"6","116":"4","117":"2","118":"2","119":"6","120":"4","121":"4","122":"4","123":"4"},
+    "난바다": {"101":"8","102":"6","103":"4","104":"4","105":"6","106":"10","107":"4","108":"4","109":"8","110":"6","111":"4","112":"4","113":"8","114":"6","115":"10"},
+    "허허바다": {"101":"10","102":"8","103":"4","104":"4","105":"6","106":"4","107":"4","108":"10"}
   };
-  const NANBADA_CAPACITY_MAP = {
-    "101": "8", "102": "6", "103": "4", "104": "4", "105": "6", "106": "10", "107": "4", "108": "4", "109": "8", "110": "6", "111": "4", "112": "4", "113": "8", "114": "6", "115": "10"
-  };
-  const HEOHEOBADA_CAPACITY_MAP = {
-    "101": "10", "102": "8", "103": "4", "104": "4", "105": "6", "106": "4", "107": "4", "108": "10"
-  };
-  function roomNumberOf(room) {
-    const match = valueOf(room).match(/(\d+)\s*번?/);
-    return match ? match[1] : "";
-  }
-  function mappedCapacity(item) {
-    const facility = valueOf(item?.facility || item?.category || item?.categoryName || item?.name || item?.fcltyNm);
-    const roomNo = roomNumberOf(item?.room || item?.roomName || item?.room_name || item?.name || item?.raw);
-    if (/든바다/.test(facility)) return DEUNBADA_CAPACITY_MAP[roomNo] || "";
-    if (/난바다/.test(facility)) return NANBADA_CAPACITY_MAP[roomNo] || "";
-    if (/허허바다/.test(facility)) return HEOHEOBADA_CAPACITY_MAP[roomNo] || "";
-    return "";
-  }
-  function capacityOf(item) {
-    const mapped = mappedCapacity(item || {});
-    if (mapped) return mapped;
-    const direct = valueOf(item?.capacity || item?.people || item?.person || item?.persons || item?.headcount || item?.cnt || item?.inwon || item?.roomCapacity || item?.capacityText);
-    if (!direct || direct === "2") return "";
-    if (/^\d+$/.test(direct)) return direct;
-    const match = direct.match(/(\d+)\s*(?:인|명|people|persons?)/i);
-    return match ? match[1] : "";
-  }
+  const state = { lastRefresh: "-", intervalSec: 60, lastRefreshMs: 0, cancelCount: 0, syncing: false };
+  const text = v => String(v == null ? "" : v).trim();
+  const two = v => String(v).padStart(2, "0");
+  const escapeHtml = v => text(v).replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+  const facilityName = v => /허허/.test(text(v)) ? "허허바다" : /난바다/.test(text(v)) ? "난바다" : /든바다/.test(text(v)) ? "든바다" : /자동차|캠핑/.test(text(v)) ? "자동차캠핑장" : text(v);
+  function roomNo(v) { const m = text(v).match(/(\d+)/); return m ? m[1] : ""; }
   function roomWithCapacity(room, item) {
-    const base = valueOf(room).replace(/\s*\(\d+\s*인\)\s*$/, "");
-    const capacity = capacityOf({ ...(item || {}), room: base, roomName: base });
+    const base = text(room).replace(/\s*\(\d+\s*인\)\s*$/, "");
+    const facility = facilityName(item && (item.facility || item.category || item.name));
+    const no = roomNo(base);
+    const mapped = CAPACITY[facility] && CAPACITY[facility][no];
+    const direct = text(item && (item.capacity || item.people || item.person || item.persons || item.headcount || item.roomCapacity));
+    const capacity = mapped || (/^\d+$/.test(direct) ? direct : ((direct.match(/(\d+)\s*(?:인|명|people|persons?)/i) || [])[1] || ""));
     return base && capacity ? base + "(" + capacity + "인)" : base;
   }
-  function applyRoomCapacityLabels() {
-    Array.from(document.querySelectorAll('#activeRows .grid-row, #firstRows.history-grid .grid-row')).forEach(row => {
-      const cells = row.children;
-      if (!cells || cells.length < 3) return;
-      const roomCell = cells[2];
-      const current = valueOf(roomCell.textContent);
-      if (!current) return;
-      const facility = valueOf(cells[1]?.textContent);
-      roomCell.textContent = roomWithCapacity(current, { facility, category: facility, room: current, roomName: current });
-    });
+  function clock(v) {
+    const d = v ? new Date(v) : new Date();
+    if (!Number.isFinite(d.getTime())) return "-";
+    return two(d.getHours()) + ":" + two(d.getMinutes()) + ":" + two(d.getSeconds());
   }
-  function joined(item) { return [item?.event_type, item?.eventType, item?.kind, item?.status, item?.state, item?.message].map(valueOf).join(" "); }
-  function isAvailable(item) { return /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(joined(item)); }
-  function isEnded(item) { return /종료|ended|closed|finish|complete|예약\s*완료|예약완료|예약\s*마감|예약마감/i.test([item?.state, item?.status, item?.message].map(valueOf).join(" ")); }
-  function normalizeStatusPhrase(text) {
-    const raw = valueOf(text);
-    if (!raw) return "";
-    if (/예약\s*완료|예약완료/i.test(raw)) return "예약완료";
-    if (/선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점/i.test(raw)) return "선점중";
-    if (/예약\s*중|예약중/i.test(raw)) return "예약중";
-    if (/예약\s*가능|예약가능/i.test(raw)) return "예약가능";
-    if (/예약\s*마감|예약마감/i.test(raw)) return "예약마감";
-    if (/발생|detected|new/i.test(raw)) return "발생";
-    return raw;
+  function shortClock(v) {
+    const raw = text(v);
+    const m = raw.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+    if (m) return two(m[1]) + ":" + m[2];
+    const d = new Date(raw);
+    if (!Number.isFinite(d.getTime())) return raw;
+    return two(d.getHours()) + ":" + two(d.getMinutes());
   }
-  function explicitStatusPhrase(item) {
-    const combined = [item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.state, item?.status, item?.message, item?.event_type, item?.eventType].map(valueOf).filter(Boolean).join(" ");
-    const match = combined.match(/예약\s*완료|예약완료|선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점|예약\s*중|예약중|예약\s*가능|예약가능|예약\s*마감|예약마감|발생/i);
-    return match ? normalizeStatusPhrase(match[0]) : "";
+  function statusInfo(item) {
+    const combined = [item && item.event_type, item && item.eventType, item && item.kind, item && item.status, item && item.state, item && item.statusText, item && item.message].map(text).join(" ");
+    const canclYn = text(item && item.canclYn).toUpperCase();
+    const resveAt = text(item && item.resveAt).toUpperCase();
+    const resveYn = text(item && item.resveYn).toUpperCase();
+    const preocpcYn = text(item && item.preocpcYn).toUpperCase();
+    const imprtyYn = text(item && item.imprtyYn).toUpperCase();
+    if (canclYn === "N" || /canceling|취소\s*진행|취소중/i.test(combined)) return { kind: "취소중", cls: "canceling", status: "발생" };
+    if (resveAt === "Y" && resveYn === "Y" && preocpcYn === "Y" && imprtyYn === "N" && canclYn === "Y") return { kind: "예약가능", cls: "available", status: "종료 → 예약 가능" };
+    if (/예약\s*마감|예약마감|예약\s*불가|예약불가|마감|불가|closed|unavailable/i.test(combined)) return { kind: "예약가능", cls: "available", status: "종료 → 예약 마감" };
+    if (/선점|예약\s*완료|예약완료|예약\s*중|예약중|결제\s*완료|결제완료|reserved|payment/i.test(combined)) return { kind: "예약가능", cls: "available", status: "종료 → 선점/예약 중" };
+    if (/available|예약\s*가능|예약가능|\bY\b/i.test(combined)) return { kind: "예약가능", cls: "available", status: "종료 → 예약 가능" };
+    return { kind: "취소중", cls: "canceling", status: "발생" };
   }
-  function signalFlag(item, ...names) {
-    for (const name of names) {
-      const value = valueOf(item?.[name]).toUpperCase();
-      if (value) return value;
-    }
-    return "";
-  }
-  function referenceStatusTail(phrase) {
-    const raw = normalizeStatusPhrase(phrase);
-    if (/예약가능/i.test(raw)) return "예약 가능";
-    if (/예약마감/i.test(raw)) return "예약 마감";
-    if (/예약완료|예약중|선점중|선점/i.test(raw)) return "선점/예약 중";
-    return raw;
-  }
-  function signalStatusText(item) {
-    const state = valueOf(item?.state), status = valueOf(item?.status), message = valueOf(item?.message);
-    const combined = [state, status, message, item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.event_type, item?.eventType].map(valueOf).filter(Boolean).join(" ");
-    const ended = combined.match(/종료\s*(?:→|->|-)?\s*([^,|]*)/);
-    if (ended) {
-      const tail = referenceStatusTail(ended[1]);
-      return tail && tail !== "발생" ? "종료 → " + tail : "종료";
-    }
-    const phrase = explicitStatusPhrase(item);
-    if (/예약 *마감|예약마감|예약 *불가|예약불가|예약 *불가능|마감|불가|closed|unavailable/i.test(combined)) return "종료 → 예약 마감";
-    if (/선점|예약 *완료|예약완료|예약 *중|예약중|결제 *완료|결제완료|payment *complete|reserved/i.test(combined)) return "종료 → 선점/예약 중";
-    if (/종료|ended|closed|finish/i.test(combined) && phrase && phrase !== "발생") return "종료 → " + referenceStatusTail(phrase);
-    if (/발생|detected|new/i.test(combined)) return "발생";
-    return "발생";
-  }
-
-  function installStatusOverrides() {
-    window.historyKind = function historyKind(item) { return isAvailable(item) ? "예약가능" : "취소진행중"; };
-    window.historyKindClass = function historyKindClass(item) { return isAvailable(item) ? "history-kind available" : "history-kind canceling"; };
-    window.statusText = function statusText(item) {
-      return signalStatusText(item);
-    };
-    if (typeof window.render === "function") window.render();
-  }
-  function insertFacilityBox() { if (document.querySelector(".facility-status-box")) return; const titles = Array.from(document.querySelectorAll(".field-title")); const facilityTitle = titles.find(title => (title.textContent || "").includes("시설명")); if (!facilityTitle) return; const box = document.createElement("div"); box.className = "facility-status-box"; box.setAttribute("aria-label", "상태 표시 박스"); facilityTitle.insertAdjacentElement("afterend", box); }
-
-  const summaryState = { lastRefresh: '-', interval: '-', intervalSec: 60, lastRefreshMs: 0, cancelCount: null };
-
-  function two(value) { return String(value).padStart(2, '0'); }
-
-  function formatClock(value) {
-    const date = value ? new Date(value) : new Date();
-    if (!Number.isFinite(date.getTime())) return '-';
-    return two(date.getHours()) + ':' + two(date.getMinutes()) + ':' + two(date.getSeconds());
-  }
-
-  function normalizeInterval(sec) {
-    const n = Number(sec);
-    return Number.isFinite(n) && n > 0 ? Math.round(n) : 60;
-  }
-
-  function remainingRefreshSeconds() {
-    const interval = normalizeInterval(summaryState.intervalSec);
-    const base = Number(summaryState.lastRefreshMs || 0);
-    if (!base) return interval;
-    const next = base + interval * 1000;
-    return Math.max(0, Math.min(interval, Math.ceil((next - Date.now()) / 1000)));
-  }
-
-  function countActiveRows() {
-    return Array.from(document.querySelectorAll('#activeRows .grid-row'))
-      .filter(row => (row.textContent || '').trim() && !(row.textContent || '').includes('없습니다'))
-      .length;
-  }
-
-  function ensureLiveSummaryBox() {
-    let box = document.getElementById('codexLiveSummary');
-    if (box) return box;
-    const controls = document.querySelector('.panel.controls');
-    const app = document.querySelector('.app') || document.body;
-    box = document.createElement('section');
-    box.id = 'codexLiveSummary';
-    box.className = 'codex-live-summary';
-    box.innerHTML = [
-      '<div class="summary-cell"><span class="summary-label">현재시간</span><strong class="summary-value" data-summary="now">--:--:--</strong></div>',
-      '<div class="summary-cell"><span class="summary-label">취소</span><strong class="summary-value" data-summary="cancel">0건</strong></div>',
-      '<div class="summary-cell"><span class="summary-label">갱신시간</span><strong class="summary-value" data-summary="refresh">-</strong></div>',
-      '<div class="summary-cell"><span class="summary-label">갱신주기</span><strong class="summary-value" data-summary="interval">60초</strong></div>'
-    ].join('');
-    if (controls) controls.insertAdjacentElement('beforeend', box);
-    else app.insertAdjacentElement('afterbegin', box);
-    return box;
-  }
-
-  function setSummaryValue(name, value) {
-    const el = document.querySelector('[data-summary="' + name + '"]');
-    if (el) el.textContent = value;
-  }
-
-  function renderLiveSummary() {
-    ensureLiveSummaryBox();
-    const count = summaryState.cancelCount == null ? countActiveRows() : summaryState.cancelCount;
-    setSummaryValue('now', formatClock());
-    setSummaryValue('cancel', count + '건');
-    setSummaryValue('refresh', summaryState.lastRefresh);
-    setSummaryValue('interval', remainingRefreshSeconds() + '초');
-  }
-
-  function requestSummaryStatus() {
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', '/api/events?summary=' + Date.now(), true);
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState !== 4 || xhr.status < 200 || xhr.status >= 300) return;
-        try {
-          const data = JSON.parse(xhr.responseText || '{}');
-          const active = Array.isArray(data.active) ? data.active : [];
-          const monitor = data.status && data.status.monitor ? data.status.monitor : data.monitor || {};
-          summaryState.cancelCount = active.length || Number(monitor.activeCount || 0) || countActiveRows();
-          const refreshed = data.status?.lastRefreshAt || data.lastRefreshAt || data.lastReportAt || data.heartbeat?.received_at;
-          summaryState.lastRefresh = refreshed ? formatClock(refreshed) : '-';
-          const refreshDate = refreshed ? new Date(refreshed) : null;
-          summaryState.lastRefreshMs = refreshDate && Number.isFinite(refreshDate.getTime()) ? refreshDate.getTime() : Date.now();
-          summaryState.intervalSec = normalizeInterval(data.config?.intervalSec || monitor.intervalSec || data.intervalSec);
-          renderLiveSummary();
-        } catch (error) {}
-      };
-      xhr.send();
-    } catch (error) {}
-  }
-
-
-
-  function applyLayoutTextCleanup() {
-    Array.from(document.querySelectorAll('.facility-status-box')).forEach(el => el.remove());
-    Array.from(document.querySelectorAll('.panel.section .section-title, .panel.section h2, .panel.section h3, .section-title, h2, h3'))
-      .forEach(el => {
-        const text = (el.textContent || '').trim();
-        if (text.includes('현재 실시간 취소 진행 중인 시설')) el.textContent = '취소 진행 중';
-        if (text.includes('취소 시설별 최초 감지 기록')) el.textContent = '감지기록 누적';
-      });
-  }
-
-  function fixRemainingStyle() {
-    Array.from(document.querySelectorAll('.remaining-soon')).forEach(el => {
-      el.style.setProperty('display', 'inline', 'important');
-      el.style.setProperty('width', 'auto', 'important');
-      el.style.setProperty('min-width', '0', 'important');
-      el.style.setProperty('min-height', '0', 'important');
-      el.style.setProperty('padding', '0', 'important');
-      el.style.setProperty('border', '0', 'important');
-      el.style.setProperty('border-radius', '0', 'important');
-      el.style.setProperty('background', 'transparent', 'important');
-      el.style.setProperty('color', '#c40000', 'important');
-      el.style.setProperty('font-weight', '950', 'important');
-      el.style.setProperty('box-shadow', 'none', 'important');
-    });
-  }
-
-
-  const HISTORY_STORE_KEY = "goMangsangFirstDetectedHistoryV1";
-
-  function loadStoredHistory() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(HISTORY_STORE_KEY) || "[]");
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (_) {
-      return [];
-    }
-  }
-
-  function saveStoredHistory(items) {
-    try {
-      localStorage.setItem(HISTORY_STORE_KEY, JSON.stringify(items.slice(-500)));
-    } catch (_) {}
-  }
-
-  function normalizeHistoryRecord(record) {
-    const rawKind = valueOf(record.kind) || "취소진행중";
-    const kind = /예약/.test(rawKind) ? "예약가능" : "취소진행중";
-    const rawStatus = valueOf(record.status) || "발생";
-    let status = rawStatus;
-    if (/취소진행시설|취소\s*진행중$/.test(status)) status = "발생";
-    else if (/예약가능시설/.test(status)) status = "발생";
-    else if (/예약마감시설|예약\s*마감|예약마감|예약\s*불가|예약불가/.test(status)) status = "종료 → 예약 마감";
-    else if (/나의 선점 시설|예약중$|선점|예약\s*완료|결제\s*완료/.test(status)) status = "종료 → 선점/예약 중";
+  function recordKey(r) { return [r.date, r.facility, r.room].join("|"); }
+  function normalizeRecord(record) {
+    const info = statusInfo(record || {});
     return {
-      date: valueOf(record.date),
-      facility: valueOf(record.facility),
-      room: roomWithCapacity(valueOf(record.room), record),
-      detected: valueOf(record.detected),
-      kind,
-      status
+      date: text(record.date || record.target_date || record.targetDate || record.beginDate || record.resveBeginDe),
+      facility: facilityName(record.facility || record.category || record.fcltyNm || record.name),
+      room: roomWithCapacity(record.room || record.room_name || record.roomName || record.roomNo, record),
+      detected: shortClock(record.detected || record.detected_at || record.detectedAt || record.received_at || record.time || record.created_at || record.updated_at),
+      kind: text(record.kind) || info.kind,
+      kindClass: /예약/.test(text(record.kind) || info.kind) ? "available" : info.cls,
+      status: text(record.statusLabel) || text(record.status_text) || text(record.statusText) || info.status
     };
   }
-
-  function historyKey(record) {
-    return [record.date, record.facility, record.room].join("|");
+  function loadHistory() {
+    try { const v = JSON.parse(localStorage.getItem(HISTORY_STORE_KEY) || "[]"); return Array.isArray(v) ? v : []; } catch (_) { return []; }
   }
-
-  function readRowsAsHistory(selector, mode) {
-    return Array.from(document.querySelectorAll(selector + " .grid-row")).map(row => {
-      const cells = Array.from(row.children).map(cell => valueOf(cell.textContent));
-      if (mode === "active" && cells.length >= 4) {
-        return normalizeHistoryRecord({ date: cells[0], facility: cells[1], room: cells[2], detected: cells[3], kind: "취소진행중", status: "발생" });
-      }
-      if (mode === "history" && cells.length >= 6) {
-        return normalizeHistoryRecord({ date: cells[0], facility: cells[1], room: cells[2], detected: cells[3], kind: cells[4], status: cells[5] });
-      }
-      return null;
-    }).filter(item => item && item.date && item.facility && item.room && item.detected && !item.date.includes("없습니다"));
+  function saveHistory(items) {
+    try { localStorage.setItem(HISTORY_STORE_KEY, JSON.stringify(items.slice(-700))); } catch (_) {}
   }
-
-  function mergeHistoryRecords(...groups) {
+  function mergeHistory() {
     const map = new Map();
-    groups.flat().forEach(item => {
-      const record = normalizeHistoryRecord(item || {});
-      if (!record.date || !record.facility || !record.room || !record.detected) return;
-      const key = historyKey(record);
+    Array.from(arguments).flat().forEach(item => {
+      const record = normalizeRecord(item || {});
+      if (!record.date || !record.facility || !record.room || !record.detected || record.date.includes("없습니다")) return;
+      const key = recordKey(record);
       const prev = map.get(key);
-      if (!prev) {
-        map.set(key, record);
-        return;
-      }
-      map.set(key, {
-        ...prev,
-        kind: record.kind || prev.kind,
-        status: record.status && record.status !== "발생" ? record.status : prev.status,
-        detected: prev.detected || record.detected
-      });
+      if (!prev) map.set(key, record);
+      else map.set(key, { ...prev, kind: record.kind || prev.kind, kindClass: record.kindClass || prev.kindClass, status: record.status !== "발생" ? record.status : prev.status, detected: prev.detected || record.detected });
     });
     return Array.from(map.values()).sort((a, b) => (a.date + a.facility + a.room).localeCompare(b.date + b.facility + b.room, "ko"));
   }
-
-  function historyRenderSignature(items) {
-    return JSON.stringify(items.map(item => [item.date, item.facility, item.room, item.detected, item.kind, item.status]));
+  function rowsToRecords(selector, active) {
+    return Array.from(document.querySelectorAll(selector + " .grid-row")).map(row => {
+      const c = Array.from(row.children).map(el => text(el.textContent));
+      if (c.length < 4) return null;
+      return normalizeRecord({ date: c[0], facility: c[1], room: c[2], detected: c[3], kind: active ? "취소중" : c[4], status: active ? "발생" : c[5], canclYn: active ? "N" : "" });
+    }).filter(Boolean);
   }
-
-  function renderStoredHistory(items) {
+  function renderHistory(items) {
     const wrap = document.querySelector("#firstRows.history-grid");
     if (!wrap) return;
-    const signature = historyRenderSignature(items);
+    const signature = JSON.stringify(items.map(item => [item.date, item.facility, item.room, item.detected, item.kind, item.status]));
     if (wrap.dataset.codexHistorySignature === signature) return;
     wrap.dataset.codexHistorySignature = signature;
-    let head = wrap.querySelector(".grid-head");
-    if (!head) {
-      head = document.createElement("div");
-      head.className = "grid-head";
-      ["날짜", "시설", "객실", "감지", "종류", "상태"].forEach(text => {
-        const span = document.createElement("span");
-        span.textContent = text;
-        head.appendChild(span);
-      });
-    }
-    wrap.innerHTML = "";
-    wrap.appendChild(head);
-    if (!items.length) {
-      const empty = document.createElement("div");
-      empty.className = "grid-row empty";
-      empty.textContent = "누적 감지 기록이 없습니다.";
-      wrap.appendChild(empty);
-      return;
-    }
-    items.forEach(item => {
-      const row = document.createElement("div");
-      row.className = "grid-row";
-      [item.date, item.facility, item.room, item.detected].forEach(text => {
-        const span = document.createElement("span");
-        span.textContent = text;
-        row.appendChild(span);
-      });
-      const kind = document.createElement("span");
-      kind.className = "history-kind " + (/예약/.test(item.kind) ? "available" : "canceling");
-      kind.textContent = item.kind || "취소진행중";
-      row.appendChild(kind);
-      const status = document.createElement("span");
-      status.className = "history-status";
-      status.textContent = /취소/.test(item.kind || "") && (item.status || "발생") === "발생" ? "취소 진행중" : (item.status || "발생");
-      row.appendChild(status);
-      wrap.appendChild(row);
+    if (!items.length) { wrap.innerHTML = '<div class="empty">누적 감지 기록이 없습니다.</div>'; return; }
+    wrap.innerHTML = '<div class="grid-head"><span>날짜</span><span>시설</span><span>객실</span><span>감지</span><span>종류</span><span>상태</span></div>' + items.map(item => {
+      const cls = /예약/.test(item.kind) ? "available" : "canceling";
+      const ended = /^종료/.test(item.status) ? " ended" : "";
+      return '<div class="grid-row"><time>' + escapeHtml(item.date).replace(/^\d{4}-/, "") + '</time><strong>' + escapeHtml(item.facility) + '</strong><span>' + escapeHtml(item.room) + '</span><span>' + escapeHtml(item.detected) + '</span><span class="history-kind ' + cls + '">' + escapeHtml(item.kind) + '</span><span class="history-status' + ended + '">' + escapeHtml(item.status || "발생") + '</span></div>';
+    }).join("");
+  }
+  function applyRoomCapacityLabels() {
+    Array.from(document.querySelectorAll("#activeRows .grid-row, #firstRows.history-grid .grid-row")).forEach(row => {
+      const c = row.children;
+      if (!c || c.length < 3) return;
+      c[2].textContent = roomWithCapacity(c[2].textContent, { facility: c[1].textContent, category: c[1].textContent, room: c[2].textContent });
     });
   }
-
-  function formatHistoryDetected(value) {
-    const raw = valueOf(value);
-    if (!raw) return "";
-    const timeMatch = raw.match(/(d{1,2}):(d{2})(?::d{2})?/);
-    if (timeMatch) return timeMatch[1].padStart(2, "0") + ":" + timeMatch[2];
-    const date = new Date(raw);
-    if (!Number.isNaN(date.getTime())) return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
-    return raw;
+  function ensureSummary() {
+    let box = document.getElementById("codexLiveSummary");
+    if (box) return box;
+    const controls = document.querySelector(".panel.controls");
+    box = document.createElement("section");
+    box.id = "codexLiveSummary";
+    box.className = "codex-live-summary";
+    box.innerHTML = '<div class="summary-cell"><span class="summary-label">현재시간</span><strong class="summary-value" data-summary="now">--:--:--</strong></div><div class="summary-cell"><span class="summary-label">취소</span><strong class="summary-value" data-summary="cancel">0건</strong></div><div class="summary-cell"><span class="summary-label">갱신시간</span><strong class="summary-value" data-summary="refresh">-</strong></div><div class="summary-cell"><span class="summary-label">갱신주기</span><strong class="summary-value" data-summary="interval">60초</strong></div>';
+    if (controls) controls.insertAdjacentElement("beforeend", box);
+    else document.body.insertAdjacentElement("afterbegin", box);
+    return box;
   }
-
-  function firstValueOf(...values) {
-    for (const value of values) {
-      const text = valueOf(value);
-      if (text) return text;
-    }
-    return "";
+  function remainingRefreshSeconds() {
+    const interval = Number.isFinite(Number(state.intervalSec)) && Number(state.intervalSec) > 0 ? Number(state.intervalSec) : 60;
+    if (!state.lastRefreshMs) return interval;
+    return Math.max(0, Math.min(interval, Math.ceil((state.lastRefreshMs + interval * 1000 - Date.now()) / 1000)));
   }
-
-  function historyRecordFromEvent(item, forcedKind) {
-    const rawKind = forcedKind || valueOf(item?.kind) || valueOf(item?.event_type) || valueOf(item?.eventType);
-    const kind = /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(joined({ ...item, kind: rawKind })) ? "예약가능" : "취소진행중";
-    const detected = formatHistoryDetected(firstValueOf(item?.detected, item?.detected_at, item?.detectedAt, item?.received_at, item?.receivedAt, item?.time, item?.created_at, item?.createdAt, item?.updated_at, item?.updatedAt));
-    const rawStatus = typeof statusText === "function" ? statusText(item) : firstValueOf(item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.state, item?.status);
-    return normalizeHistoryRecord({
-      date: firstValueOf(item?.date, item?.target_date, item?.targetDate, item?.beginDate, item?.resveBeginDe),
-      facility: firstValueOf(item?.facility, item?.category, item?.fcltyNm, item?.area),
-      room: firstValueOf(item?.room, item?.room_name, item?.roomName, item?.roomNo, item?.room_no),
-      detected,
-      kind,
-      status: rawStatus || "발생"
+  function setSummary(name, value) { const el = document.querySelector('[data-summary="' + name + '"]'); if (el) el.textContent = value; }
+  function renderSummary() {
+    ensureSummary();
+    setSummary("now", clock());
+    setSummary("cancel", state.cancelCount + "건");
+    setSummary("refresh", state.lastRefresh);
+    setSummary("interval", remainingRefreshSeconds() + "초");
+  }
+  function cleanupText() {
+    Array.from(document.querySelectorAll(".facility-status-box")).forEach(el => el.remove());
+    Array.from(document.querySelectorAll(".section-title, h2, h3")).forEach(el => {
+      const v = text(el.textContent);
+      if (v.includes("현재 실시간 취소 진행 중인 시설")) el.textContent = "취소 진행 중";
+      if (v.includes("취소 시설별 최초 감지 기록")) el.textContent = "감지기록 누적";
     });
   }
-
-  async function syncHistoryFromServer() {
-    if (typeof fetch !== "function") return;
+  async function syncFromServer() {
+    if (state.syncing) return;
+    state.syncing = true;
     try {
-      const response = await fetch("/api/events?codex_history_restore=" + Date.now(), { cache: "no-store" });
+      const response = await fetch("/api/events?codex_refine=" + Date.now(), { cache: "no-store" });
       if (!response.ok) return;
-      const payload = await response.json();
-      const fromEvents = Array.isArray(payload.events) ? payload.events.map(item => historyRecordFromEvent(item)) : [];
-      const fromActive = Array.isArray(payload.active) ? payload.active.map(item => historyRecordFromEvent({ ...item, event_type: "canceling", state: "발생", statusText: "발생", canclYn: "N", status: "N" }, "취소진행중")) : [];
-      const merged = mergeHistoryRecords(loadStoredHistory(), readRowsAsHistory("#firstRows.history-grid", "history"), readRowsAsHistory("#activeRows", "active"), fromEvents, fromActive);
-      if (merged.length) {
-        saveStoredHistory(merged);
-        renderStoredHistory(merged);
-        applyRoomCapacityLabels();
-      }
-    } catch (_) {}
-  }
-
-  function syncPersistentHistory() {
-    const stored = loadStoredHistory();
-    const fromHistory = readRowsAsHistory("#firstRows.history-grid", "history");
-    const fromActive = readRowsAsHistory("#activeRows", "active");
-    const merged = mergeHistoryRecords(stored, fromHistory, fromActive);
-    if (merged.length) {
-      saveStoredHistory(merged);
-      renderStoredHistory(merged);
+      const data = await response.json();
+      const active = Array.isArray(data.active) ? data.active : [];
+      const events = Array.isArray(data.events) ? data.events : [];
+      const monitor = data.status && data.status.monitor ? data.status.monitor : {};
+      state.cancelCount = active.length || Number(monitor.activeCount || 0) || 0;
+      const refreshed = (data.status && data.status.lastRefreshAt) || data.lastRefreshAt || data.lastReportAt;
+      state.lastRefresh = refreshed ? clock(refreshed) : "-";
+      const rd = refreshed ? new Date(refreshed) : null;
+      state.lastRefreshMs = rd && Number.isFinite(rd.getTime()) ? rd.getTime() : Date.now();
+      state.intervalSec = Number((data.config && data.config.intervalSec) || monitor.intervalSec || state.intervalSec || 60);
+      const merged = mergeHistory(loadHistory(), rowsToRecords("#firstRows.history-grid", false), rowsToRecords("#activeRows", true), events.map(normalizeRecord), active.map(item => normalizeRecord({ ...item, kind: "취소중", canclYn: "N", status: "발생" })));
+      saveHistory(merged);
+      renderHistory(merged);
       applyRoomCapacityLabels();
+      renderSummary();
+    } finally {
+      state.syncing = false;
     }
   }
-
-  function boot() { installStatusOverrides(); ensureLiveSummaryBox(); renderLiveSummary(); requestSummaryStatus(); applyLayoutTextCleanup(); fixRemainingStyle(); applyRoomCapacityLabels(); syncPersistentHistory(); syncHistoryFromServer(); setInterval(renderLiveSummary, 1000); setInterval(requestSummaryStatus, 5000); setInterval(fixRemainingStyle, 1000); setInterval(applyLayoutTextCleanup, 1000); setInterval(applyRoomCapacityLabels, 1000); setInterval(syncPersistentHistory, 3000); setInterval(syncHistoryFromServer, 10000); setTimeout(installStatusOverrides, 1000); setTimeout(fixRemainingStyle, 1200); setTimeout(applyRoomCapacityLabels, 1300); setTimeout(syncPersistentHistory, 1500); setTimeout(syncHistoryFromServer, 700); setTimeout(syncHistoryFromServer, 2500); }
+  function boot() {
+    ensureSummary();
+    cleanupText();
+    renderSummary();
+    renderHistory(mergeHistory(loadHistory(), rowsToRecords("#firstRows.history-grid", false), rowsToRecords("#activeRows", true)));
+    applyRoomCapacityLabels();
+    syncFromServer();
+    setInterval(renderSummary, 1000);
+    setInterval(() => { cleanupText(); applyRoomCapacityLabels(); }, 1000);
+    setInterval(() => { const merged = mergeHistory(loadHistory(), rowsToRecords("#firstRows.history-grid", false), rowsToRecords("#activeRows", true)); saveHistory(merged); renderHistory(merged); applyRoomCapacityLabels(); }, 2500);
+    setInterval(syncFromServer, 10000);
+  }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true }); else boot();
 })();
 </script>`;
@@ -1025,7 +609,31 @@ function signalFlagServer(item, ...names) {
 }
 
 function signalStatusTextServer(item, previous = {}) {
-  return "";
+  const combined = [
+    item.state,
+    item.statusText,
+    item.status_text,
+    item.statusLabel,
+    item.status_label,
+    item.message,
+    item.event_type,
+    item.eventType,
+    item.status,
+    previous.state,
+    previous.statusText,
+    previous.message
+  ].map(valueOfServer).filter(Boolean).join(" ");
+  const canclYn = signalFlagServer(item, "canclYn", "cancl_yn", "cancelYn", "cancel_yn");
+  const resveAt = signalFlagServer(item, "resveAt", "resve_at");
+  const resveYn = signalFlagServer(item, "resveYn", "resve_yn");
+  const preocpcYn = signalFlagServer(item, "preocpcYn", "preocpc_yn");
+  const imprtyYn = signalFlagServer(item, "imprtyYn", "imprty_yn");
+  if (canclYn === "N") return "발생";
+  if (resveAt === "Y" && resveYn === "Y" && preocpcYn === "Y" && imprtyYn === "N" && canclYn === "Y") return "종료 → 예약 가능";
+  if (/예약\s*마감|예약마감|예약\s*불가|예약불가|예약\s*불가능|마감|불가|closed|unavailable/i.test(combined)) return "종료 → 예약 마감";
+  if (/선점|예약\s*완료|예약완료|예약\s*중|예약중|결제\s*완료|결제완료|payment\s*complete|reserved/i.test(combined)) return "종료 → 선점/예약 중";
+  if (/available|예약\s*가능|예약가능|\bY\b/i.test(combined)) return "종료 → 예약 가능";
+  return "발생";
 }
 
 function referenceStatusTailServer(phrase) {
@@ -1056,6 +664,8 @@ function eventStatusText(item, previous = {}) {
     const tail = referenceStatusTailServer(ended[1]);
     return tail && tail !== "발생" ? "종료 → " + tail : "종료";
   }
+  const signalStatus = signalStatusTextServer(item, previous);
+  if (signalStatus) return signalStatus;
   const phrase = normalizeStatusPhraseServer((combined.match(/예약\s*완료|예약완료|선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점|예약\s*중|예약중|예약\s*가능|예약가능|예약\s*마감|예약마감|발생/i) || [""])[0]);
   if (/예약\s*마감|예약마감|예약\s*불가|예약불가|예약\s*불가능|마감|불가|closed|unavailable/i.test(combined)) return "종료 → 예약 마감";
   if (/선점|예약\s*완료|예약완료|예약\s*중|예약중|결제\s*완료|결제완료|payment\s*complete|reserved/i.test(combined)) return "종료 → 선점/예약 중";
