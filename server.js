@@ -713,7 +713,8 @@ body #firstRows.history-grid .grid-row > * {
     const wrap = document.querySelector("#firstRows.history-grid");
     if (!wrap) return;
     const signature = historyRenderSignature(items);
-    if (wrap.dataset.codexHistorySignature === signature) return;
+    const currentHead = wrap.querySelector(":scope > .grid-head");
+    if (wrap.dataset.codexHistorySignature === signature && currentHead && currentHead.children.length === 8) return;
     wrap.dataset.codexHistorySignature = signature;
     const head = document.createElement("div");
     head.className = "grid-head";
