@@ -26,23 +26,17 @@ const UI_FIX_CSS = String.raw`
   -webkit-overflow-scrolling: touch !important;
 }
 #activeRows .grid-head,
-#activeRows .grid-row {
+#activeRows .grid-row,
+#firstRows.history-grid .grid-head,
+#firstRows.history-grid .grid-row {
   grid-template-columns: 54px 68px 52px 54px 68px 86px !important;
   min-width: 382px !important;
   justify-content: stretch !important;
   gap: 4px !important;
   align-items: center !important;
 }
-#firstRows.history-grid .grid-head,
-#firstRows.history-grid .grid-row {
-  grid-template-columns: 82px 70px 112px 86px 76px 58px 58px 220px !important;
-  min-width: 762px !important;
-  justify-content: stretch !important;
-  gap: 6px !important;
-  align-items: center !important;
-}
 #activeRows .grid-head > *, #activeRows .grid-row > *, #firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * {
-  min-width: 0 !important; max-width: 100% !important; overflow: hidden !important; text-overflow: clip !important; white-space: nowrap !important; text-align: center !important;
+  min-width: 0 !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; white-space: nowrap !important; text-align: center !important;
   font-size: 12px !important;
   letter-spacing: 0 !important;
 }
@@ -59,7 +53,7 @@ const UI_FIX_CSS = String.raw`
 #firstRows.history-grid .grid-row .history-status {
   display: flex !important; align-items: center !important; justify-content: center !important; min-height: 34px !important; padding: 0 4px !important; border: 0 !important; background: transparent !important; color: #17211b !important; font-family: var(--sans) !important; font-size: 12px !important; font-weight: 850 !important; line-height: 1.2 !important; white-space: normal !important; word-break: keep-all !important; overflow-wrap: anywhere !important;
 }
-@media (min-width: 760px) { #activeRows .grid-head, #activeRows .grid-row { grid-template-columns: 96px 124px 78px 90px 116px 170px !important; min-width: 674px !important; gap: 8px !important; } #firstRows.history-grid .grid-head, #firstRows.history-grid .grid-row { grid-template-columns: 132px 92px 132px 108px 110px 74px 74px 300px !important; min-width: 1064px !important; gap: 8px !important; } #activeRows .grid-head > *, #activeRows .grid-row > *, #firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * { font-size: 13px !important; } #firstRows.history-grid .grid-row .history-status { font-size: 13px !important; padding: 0 8px !important; } .facility-status-box { min-height: 64px; } }
+@media (min-width: 760px) { #activeRows .grid-head, #activeRows .grid-row, #firstRows.history-grid .grid-head, #firstRows.history-grid .grid-row { grid-template-columns: 96px 124px 78px 90px 116px 170px !important; min-width: 674px !important; gap: 8px !important; } #activeRows .grid-head > *, #activeRows .grid-row > *, #firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * { font-size: 13px !important; } #firstRows.history-grid .grid-row .history-status { font-size: 13px !important; padding: 0 8px !important; } .facility-status-box { min-height: 64px; } }
 @media (max-width: 759px) { .facility-status-box { min-height: 42px; } }
 
 .codex-live-summary {
@@ -577,7 +571,7 @@ body #firstRows.history-grid .grid-row > * {
       .forEach(el => {
         const text = (el.textContent || '').trim();
         if (text.includes('현재 실시간 취소 진행 중인 시설')) el.textContent = '취소 진행 중';
-        if (text.includes('취소 시설별 최초 감지 기록') || text.includes('감지기록 누적')) el.textContent = '최근 이력';
+        if (text.includes('취소 시설별 최초 감지 기록')) el.textContent = '감지기록 누적';
       });
   }
 
@@ -615,29 +609,6 @@ body #firstRows.history-grid .grid-row > * {
     } catch (_) {}
   }
 
-  function historyCapacityText(record) {
-    const direct = valueOf(record.capacity || record.person || record.people || record.inwon || record.headcount);
-    if (direct) {
-      if (/^\d+$/.test(direct)) return direct + "인실";
-      return /실$/.test(direct) ? direct : direct + "실";
-    }
-    const match = valueOf(record.room).match(/\((\d+인)\)/);
-    return match ? match[1] + "실" : "";
-  }
-
-  function historyRoomText(room) {
-    return valueOf(room).replace(/\s*\(\d+인\)\s*/g, "").replace(/번$/, "호");
-  }
-
-  function historyMessage(record) {
-    const explicit = valueOf(record.message);
-    if (explicit) return explicit;
-    const room = historyRoomText(record.room);
-    const person = historyCapacityText(record);
-    const suffix = person ? room + "(" + person + ")" : room;
-    return [record.date, record.facility, suffix, record.status || "발생"].filter(Boolean).join(" ");
-  }
-
   function normalizeHistoryRecord(record) {
     const rawKind = valueOf(record.kind) || "취소진행중";
     const kind = /예약/.test(rawKind) ? "예약가능" : "취소진행중";
@@ -647,21 +618,14 @@ body #firstRows.history-grid .grid-row > * {
     else if (/예약가능시설/.test(status)) status = "발생";
     else if (/예약마감시설|예약\s*마감|예약마감|예약\s*불가|예약불가/.test(status)) status = "종료 → 예약 마감";
     else if (/나의 선점 시설|예약중$|선점|예약\s*완료|결제\s*완료/.test(status)) status = "종료 → 선점/예약 중";
-    const room = roomWithCapacity(valueOf(record.room), record);
-    const normalized = {
-      time: valueOf(record.time) || valueOf(record.detectedTime) || valueOf(record.detected),
+    return {
       date: valueOf(record.date),
       facility: valueOf(record.facility),
-      capacity: historyCapacityText({ ...record, room }),
-      room,
+      room: roomWithCapacity(valueOf(record.room), record),
       detected: valueOf(record.detected),
       kind,
-      status,
-      message: valueOf(record.message)
+      status
     };
-    normalized.displayRoom = historyRoomText(normalized.room);
-    normalized.message = historyMessage(normalized);
-    return normalized;
   }
 
   function historyKey(record) {
@@ -673,9 +637,6 @@ body #firstRows.history-grid .grid-row > * {
       const cells = Array.from(row.children).map(cell => valueOf(cell.textContent));
       if (mode === "active" && cells.length >= 4) {
         return normalizeHistoryRecord({ date: cells[0], facility: cells[1], room: cells[2], detected: cells[3], kind: "취소진행중", status: "발생" });
-      }
-      if (mode === "history" && cells.length >= 8) {
-        return normalizeHistoryRecord({ time: cells[0], kind: cells[1], status: cells[2], date: cells[3], facility: cells[4], capacity: cells[5], room: cells[6], message: cells[7], detected: cells[0] });
       }
       if (mode === "history" && cells.length >= 6) {
         return normalizeHistoryRecord({ date: cells[0], facility: cells[1], room: cells[2], detected: cells[3], kind: cells[4], status: cells[5] });
@@ -706,23 +667,25 @@ body #firstRows.history-grid .grid-row > * {
   }
 
   function historyRenderSignature(items) {
-    return JSON.stringify(items.map(item => [item.time, item.kind, item.status, item.date, item.facility, item.capacity, item.displayRoom || item.room, item.message]));
+    return JSON.stringify(items.map(item => [item.date, item.facility, item.room, item.detected, item.kind, item.status]));
   }
 
   function renderStoredHistory(items) {
     const wrap = document.querySelector("#firstRows.history-grid");
     if (!wrap) return;
     const signature = historyRenderSignature(items);
-    const currentHead = wrap.querySelector(":scope > .grid-head");
-    if (wrap.dataset.codexHistorySignature === signature && currentHead && currentHead.children.length === 8) return;
+    if (wrap.dataset.codexHistorySignature === signature) return;
     wrap.dataset.codexHistorySignature = signature;
-    const head = document.createElement("div");
-    head.className = "grid-head";
-    ["시간", "종류", "상태", "날짜", "시설", "인원", "객실", "메시지"].forEach(text => {
-      const span = document.createElement("span");
-      span.textContent = text;
-      head.appendChild(span);
-    });
+    let head = wrap.querySelector(".grid-head");
+    if (!head) {
+      head = document.createElement("div");
+      head.className = "grid-head";
+      ["날짜", "시설", "객실", "감지", "종류", "상태"].forEach(text => {
+        const span = document.createElement("span");
+        span.textContent = text;
+        head.appendChild(span);
+      });
+    }
     wrap.innerHTML = "";
     wrap.appendChild(head);
     if (!items.length) {
@@ -735,21 +698,19 @@ body #firstRows.history-grid .grid-row > * {
     items.forEach(item => {
       const row = document.createElement("div");
       row.className = "grid-row";
+      [item.date, item.facility, item.room, item.detected].forEach(text => {
+        const span = document.createElement("span");
+        span.textContent = text;
+        row.appendChild(span);
+      });
       const kind = document.createElement("span");
       kind.className = "history-kind " + (/예약/.test(item.kind) ? "available" : "canceling");
       kind.textContent = item.kind || "취소진행중";
+      row.appendChild(kind);
       const status = document.createElement("span");
       status.className = "history-status";
-      status.textContent = item.status || "발생";
-      [item.time || item.detected, kind, status, item.date, item.facility, item.capacity, item.displayRoom || historyRoomText(item.room), item.message || historyMessage(item)].forEach(value => {
-        if (value && value.nodeType) {
-          row.appendChild(value);
-          return;
-        }
-        const span = document.createElement("span");
-        span.textContent = value || "";
-        row.appendChild(span);
-      });
+      status.textContent = /취소/.test(item.kind || "") && (item.status || "발생") === "발생" ? "취소 진행중" : (item.status || "발생");
+      row.appendChild(status);
       wrap.appendChild(row);
     });
   }
@@ -757,7 +718,7 @@ body #firstRows.history-grid .grid-row > * {
   function formatHistoryDetected(value) {
     const raw = valueOf(value);
     if (!raw) return "";
-    const timeMatch = raw.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+    const timeMatch = raw.match(/(d{1,2}):(d{2})(?::d{2})?/);
     if (timeMatch) return timeMatch[1].padStart(2, "0") + ":" + timeMatch[2];
     const date = new Date(raw);
     if (!Number.isNaN(date.getTime())) return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
@@ -772,33 +733,18 @@ body #firstRows.history-grid .grid-row > * {
     return "";
   }
 
-  function formatEventHistoryTime(value) {
-    const raw = valueOf(value);
-    if (!raw) return "";
-    const date = new Date(raw);
-    if (!Number.isNaN(date.getTime())) {
-      const period = date.getHours() < 12 ? "오전" : "오후";
-      const hour = date.getHours() % 12 || 12;
-      return (date.getMonth() + 1) + ". " + date.getDate() + ". " + period + " " + String(hour).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0");
-    }
-    return raw;
-  }
-
   function historyRecordFromEvent(item, forcedKind) {
     const rawKind = forcedKind || valueOf(item?.kind) || valueOf(item?.event_type) || valueOf(item?.eventType);
     const kind = /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(joined({ ...item, kind: rawKind })) ? "예약가능" : "취소진행중";
     const detected = formatHistoryDetected(firstValueOf(item?.detected, item?.detected_at, item?.detectedAt, item?.received_at, item?.receivedAt, item?.time, item?.created_at, item?.createdAt, item?.updated_at, item?.updatedAt));
     const rawStatus = typeof statusText === "function" ? statusText(item) : firstValueOf(item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.state, item?.status);
     return normalizeHistoryRecord({
-      time: formatEventHistoryTime(firstValueOf(item?.detected_at, item?.detectedAt, item?.received_at, item?.receivedAt, item?.time, item?.created_at, item?.createdAt, item?.updated_at, item?.updatedAt, item?.detected)),
       date: firstValueOf(item?.date, item?.target_date, item?.targetDate, item?.beginDate, item?.resveBeginDe),
       facility: firstValueOf(item?.facility, item?.category, item?.fcltyNm, item?.area),
-      capacity: firstValueOf(item?.capacity, item?.person, item?.people, item?.inwon, item?.headcount),
       room: firstValueOf(item?.room, item?.room_name, item?.roomName, item?.roomNo, item?.room_no),
       detected,
       kind,
-      status: rawStatus || "발생",
-      message: firstValueOf(item?.message)
+      status: rawStatus || "발생"
     });
   }
 
