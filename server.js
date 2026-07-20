@@ -445,42 +445,34 @@ body #firstRows.history-grid .grid-row > * {
     }
     return "";
   }
+  function referenceStatusTail(phrase) {
+    const raw = normalizeStatusPhrase(phrase);
+    if (/예약가능/i.test(raw)) return "예약 가능";
+    if (/예약마감/i.test(raw)) return "예약 마감";
+    if (/예약완료|예약중|선점중|선점/i.test(raw)) return "선점/예약 중";
+    return raw;
+  }
   function signalStatusText(item) {
-    const combined = [item?.state, item?.status, item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.message, item?.event_type, item?.eventType].map(valueOf).filter(Boolean).join(" ");
-    const resveAt = signalFlag(item, "resveAt", "resve_at");
-    const resveYn = signalFlag(item, "resveYn", "resve_yn");
-    const preocpcYn = signalFlag(item, "preocpcYn", "preocpc_yn");
-    const imprtyYn = signalFlag(item, "imprtyYn", "imprty_yn");
-    const canclYn = signalFlag(item, "canclYn", "cancl_yn", "cancelYn", "cancel_yn") || (signalFlag(item, "status") === "N" ? "N" : "");
-    if ((item?._activeSignalMatch || item?.myActive || item?.mine || item?.isMine) && (preocpcYn === "Y" || /선점|preocpc|active/i.test(combined))) return "나의 선점 시설";
-    if (/예약 *완료|예약완료|예약 *중|예약중|결제 *완료|결제완료|payment *complete|reserved/i.test(combined)) return "예약중";
-    if (/예약 *마감|예약마감|예약 *불가|예약불가|예약 *불가능|마감|불가|closed|unavailable/i.test(combined)) return "예약마감시설";
-    if (canclYn === "N") return "취소진행시설";
-    if (resveAt === "Y" || resveYn === "Y" || preocpcYn === "Y" || imprtyYn === "N" || canclYn === "Y" || /available|예약 *가능|예약가능/i.test(combined)) return "예약가능시설";
-    return "";
+    const state = valueOf(item?.state), status = valueOf(item?.status), message = valueOf(item?.message);
+    const combined = [state, status, message, item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.event_type, item?.eventType].map(valueOf).filter(Boolean).join(" ");
+    const ended = combined.match(/종료\s*(?:→|->|-)?\s*([^,|]*)/);
+    if (ended) {
+      const tail = referenceStatusTail(ended[1]);
+      return tail && tail !== "발생" ? "종료 → " + tail : "종료";
+    }
+    const phrase = explicitStatusPhrase(item);
+    if (/예약 *마감|예약마감|예약 *불가|예약불가|예약 *불가능|마감|불가|closed|unavailable/i.test(combined)) return "종료 → 예약 마감";
+    if (/선점|예약 *완료|예약완료|예약 *중|예약중|결제 *완료|결제완료|payment *complete|reserved/i.test(combined)) return "종료 → 선점/예약 중";
+    if (/종료|ended|closed|finish/i.test(combined) && phrase && phrase !== "발생") return "종료 → " + referenceStatusTail(phrase);
+    if (/발생|detected|new/i.test(combined)) return "발생";
+    return "발생";
   }
 
   function installStatusOverrides() {
-    window.historyKind = function historyKind(item) { return isAvailable(item) ? "예약가능" : "취소중"; };
+    window.historyKind = function historyKind(item) { return isAvailable(item) ? "예약가능" : "취소진행중"; };
     window.historyKindClass = function historyKindClass(item) { return isAvailable(item) ? "history-kind available" : "history-kind canceling"; };
     window.statusText = function statusText(item) {
-      const state = valueOf(item?.state), status = valueOf(item?.status), message = valueOf(item?.message);
-      const combined = [state, status, message, item?.statusText, item?.status_text, item?.statusLabel, item?.status_label].map(valueOf).filter(Boolean).join(" ");
-      const signal = signalStatusText(item);
-      if (signal) return signal;
-      const endMatch = combined.match(/종료\s*(?:→|->|-)?\s*([^,|]*)/);
-      if (endMatch) {
-        const tail = normalizeStatusPhrase(endMatch[1]);
-        return tail && tail !== "발생" ? "종료 → " + tail : "종료";
-      }
-      const phrase = explicitStatusPhrase(item);
-      if (phrase && phrase !== "발생") return isEnded(item) || isAvailable(item) ? "종료 → " + phrase : phrase;
-      if (isEnded(item)) return "종료";
-      if (isAvailable(item)) return "종료 → 예약가능";
-      if (state && !/^[NY]$/i.test(state) && !/canceling|available/i.test(state)) return normalizeStatusPhrase(state);
-      if (status && !/^[NY]$/i.test(status) && !/canceling|available/i.test(status)) return normalizeStatusPhrase(status);
-      if (/canceling|취소|N/i.test(combined)) return "취소 진행중";
-      return phrase || "발생";
+      return signalStatusText(item);
     };
     if (typeof window.render === "function") window.render();
   }
@@ -618,9 +610,14 @@ body #firstRows.history-grid .grid-row > * {
   }
 
   function normalizeHistoryRecord(record) {
-    const kind = valueOf(record.kind) || "취소중";
+    const rawKind = valueOf(record.kind) || "취소진행중";
+    const kind = /예약/.test(rawKind) ? "예약가능" : "취소진행중";
     const rawStatus = valueOf(record.status) || "발생";
-    const status = /취소/.test(kind) && rawStatus === "발생" ? "취소 진행중" : rawStatus;
+    let status = rawStatus;
+    if (/취소진행시설|취소\s*진행중$/.test(status)) status = "발생";
+    else if (/예약가능시설/.test(status)) status = "발생";
+    else if (/예약마감시설|예약\s*마감|예약마감|예약\s*불가|예약불가/.test(status)) status = "종료 → 예약 마감";
+    else if (/나의 선점 시설|예약중$|선점|예약\s*완료|결제\s*완료/.test(status)) status = "종료 → 선점/예약 중";
     return {
       date: valueOf(record.date),
       facility: valueOf(record.facility),
@@ -639,7 +636,7 @@ body #firstRows.history-grid .grid-row > * {
     return Array.from(document.querySelectorAll(selector + " .grid-row")).map(row => {
       const cells = Array.from(row.children).map(cell => valueOf(cell.textContent));
       if (mode === "active" && cells.length >= 4) {
-        return normalizeHistoryRecord({ date: cells[0], facility: cells[1], room: cells[2], detected: cells[3], kind: "취소중", status: "발생" });
+        return normalizeHistoryRecord({ date: cells[0], facility: cells[1], room: cells[2], detected: cells[3], kind: "취소진행중", status: "발생" });
       }
       if (mode === "history" && cells.length >= 6) {
         return normalizeHistoryRecord({ date: cells[0], facility: cells[1], room: cells[2], detected: cells[3], kind: cells[4], status: cells[5] });
@@ -708,7 +705,7 @@ body #firstRows.history-grid .grid-row > * {
       });
       const kind = document.createElement("span");
       kind.className = "history-kind " + (/예약/.test(item.kind) ? "available" : "canceling");
-      kind.textContent = item.kind || "취소중";
+      kind.textContent = item.kind || "취소진행중";
       row.appendChild(kind);
       const status = document.createElement("span");
       status.className = "history-status";
@@ -738,7 +735,7 @@ body #firstRows.history-grid .grid-row > * {
 
   function historyRecordFromEvent(item, forcedKind) {
     const rawKind = forcedKind || valueOf(item?.kind) || valueOf(item?.event_type) || valueOf(item?.eventType);
-    const kind = /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(joined({ ...item, kind: rawKind })) ? "예약가능" : "취소중";
+    const kind = /available|예약\s*가능|예약가능|예약\s*마감|예약마감|예약\s*완료|예약완료|선점|예약\s*중|예약중|Y/i.test(joined({ ...item, kind: rawKind })) ? "예약가능" : "취소진행중";
     const detected = formatHistoryDetected(firstValueOf(item?.detected, item?.detected_at, item?.detectedAt, item?.received_at, item?.receivedAt, item?.time, item?.created_at, item?.createdAt, item?.updated_at, item?.updatedAt));
     const rawStatus = typeof statusText === "function" ? statusText(item) : firstValueOf(item?.statusText, item?.status_text, item?.statusLabel, item?.status_label, item?.state, item?.status);
     return normalizeHistoryRecord({
@@ -747,7 +744,7 @@ body #firstRows.history-grid .grid-row > * {
       room: firstValueOf(item?.room, item?.room_name, item?.roomName, item?.roomNo, item?.room_no),
       detected,
       kind,
-      status: rawStatus || (kind === "취소중" ? "취소 진행중" : "발생")
+      status: rawStatus || "발생"
     });
   }
 
@@ -758,7 +755,7 @@ body #firstRows.history-grid .grid-row > * {
       if (!response.ok) return;
       const payload = await response.json();
       const fromEvents = Array.isArray(payload.events) ? payload.events.map(item => historyRecordFromEvent(item)) : [];
-      const fromActive = Array.isArray(payload.active) ? payload.active.map(item => historyRecordFromEvent({ ...item, event_type: "canceling", state: "취소진행시설", statusText: "취소진행시설", canclYn: "N", status: "N" }, "취소중")) : [];
+      const fromActive = Array.isArray(payload.active) ? payload.active.map(item => historyRecordFromEvent({ ...item, event_type: "canceling", state: "발생", statusText: "발생", canclYn: "N", status: "N" }, "취소진행중")) : [];
       const merged = mergeHistoryRecords(loadStoredHistory(), readRowsAsHistory("#firstRows.history-grid", "history"), readRowsAsHistory("#activeRows", "active"), fromEvents, fromActive);
       if (merged.length) {
         saveStoredHistory(merged);
@@ -1028,19 +1025,15 @@ function signalFlagServer(item, ...names) {
 }
 
 function signalStatusTextServer(item, previous = {}) {
-  const merged = { ...previous, ...item };
-  const combined = [merged.state, merged.status, merged.statusText, merged.status_text, merged.statusLabel, merged.status_label, merged.message, merged.event_type, merged.eventType].map(valueOfServer).filter(Boolean).join(" ");
-  const resveAt = signalFlagServer(merged, "resveAt", "resve_at");
-  const resveYn = signalFlagServer(merged, "resveYn", "resve_yn");
-  const preocpcYn = signalFlagServer(merged, "preocpcYn", "preocpc_yn");
-  const imprtyYn = signalFlagServer(merged, "imprtyYn", "imprty_yn");
-  const canclYn = signalFlagServer(merged, "canclYn", "cancl_yn", "cancelYn", "cancel_yn") || (signalFlagServer(merged, "status") === "N" ? "N" : "");
-  if ((merged._activeSignalMatch || merged.myActive || merged.mine || merged.isMine) && (preocpcYn === "Y" || /선점|preocpc|active/i.test(combined))) return "나의 선점 시설";
-  if (/예약 *완료|예약완료|예약 *중|예약중|결제 *완료|결제완료|payment *complete|reserved/i.test(combined)) return "예약중";
-  if (/예약 *마감|예약마감|예약 *불가|예약불가|예약 *불가능|마감|불가|closed|unavailable/i.test(combined)) return "예약마감시설";
-  if (canclYn === "N") return "취소진행시설";
-  if (resveAt === "Y" || resveYn === "Y" || preocpcYn === "Y" || imprtyYn === "N" || canclYn === "Y" || /available|예약 *가능|예약가능/i.test(combined)) return "예약가능시설";
   return "";
+}
+
+function referenceStatusTailServer(phrase) {
+  const raw = normalizeStatusPhraseServer(phrase);
+  if (/예약가능/i.test(raw)) return "예약 가능";
+  if (/예약마감/i.test(raw)) return "예약 마감";
+  if (/예약완료|예약중|선점중|선점/i.test(raw)) return "선점/예약 중";
+  return raw;
 }
 
 function eventStatusText(item, previous = {}) {
@@ -1058,17 +1051,16 @@ function eventStatusText(item, previous = {}) {
     previous.statusText,
     previous.message
   ].map(valueOfServer).filter(Boolean).join(" ");
-  const signal = signalStatusTextServer(item, previous);
-  if (signal) return signal;
   const ended = combined.match(/종료\s*(?:→|->|-)?\s*([^,|]*)/);
   if (ended) {
-    const tail = normalizeStatusPhraseServer(ended[1]);
+    const tail = referenceStatusTailServer(ended[1]);
     return tail && tail !== "발생" ? "종료 → " + tail : "종료";
   }
   const phrase = normalizeStatusPhraseServer((combined.match(/예약\s*완료|예약완료|선점\s*\/?\s*예약\s*중|선점\/예약중|선점중|선점|예약\s*중|예약중|예약\s*가능|예약가능|예약\s*마감|예약마감|발생/i) || [""])[0]);
-  if (phrase && phrase !== "발생") return /available|예약|선점|Y/i.test(combined) ? "종료 → " + phrase : phrase;
-  if (/canceling|취소|N/i.test(combined)) return "취소 진행중";
-  return phrase || "발생";
+  if (/예약\s*마감|예약마감|예약\s*불가|예약불가|예약\s*불가능|마감|불가|closed|unavailable/i.test(combined)) return "종료 → 예약 마감";
+  if (/선점|예약\s*완료|예약완료|예약\s*중|예약중|결제\s*완료|결제완료|payment\s*complete|reserved/i.test(combined)) return "종료 → 선점/예약 중";
+  if (/종료|ended|closed|finish/i.test(combined) && phrase && phrase !== "발생") return "종료 → " + referenceStatusTailServer(phrase);
+  return "발생";
 }
 
 
