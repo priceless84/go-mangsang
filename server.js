@@ -238,7 +238,7 @@ body #firstRows.history-grid .grid-row { min-height: 33px !important; }
   function normalizeRecord(record) {
     const info = statusInfo(record || {});
     return {
-      date: text(record.date || record.target_date || record.targetDate || record.beginDate || record.resveBeginDe),
+      date: text(record.date || record.target_date || record.targetDate || record.beginDate || record.resveBeginDe).replace(/^\d{4}-/, ""),
       facility: facilityName(record.facility || record.category || record.fcltyNm || record.name),
       room: roomWithCapacity(record.room || record.room_name || record.roomName || record.roomNo, record),
       detected: shortClock(record.detected || record.detected_at || record.detectedAt || record.received_at || record.time || record.created_at || record.updated_at),
