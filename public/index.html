@@ -1648,3 +1648,96 @@
 </body>
 </html>
 
+
+<script id="codex-reference-history-patch">
+(() => {
+  const STYLE_ID = "codex-reference-history-style";
+  const HEADERS = ["시간", "종류", "상태", "날짜", "시설", "인원", "객실", "메시지"];
+  const text = value => String(value || "").trim();
+  function ensureStyle() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = [
+      "#firstRows.history-grid { overflow-x: auto !important; }",
+      "#firstRows.history-grid .grid-head, #firstRows.history-grid .grid-row { display: grid !important; grid-template-columns: 72px 56px 84px 48px 54px 36px 44px minmax(104px, 1fr) !important; min-width: 522px !important; gap: 2px !important; align-items: center !important; }",
+      "#firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * { min-width: 0 !important; overflow: hidden !important; white-space: nowrap !important; text-overflow: clip !important; text-align: center !important; font-size: 11px !important; font-weight: 900 !important; }",
+      "#firstRows.history-grid .grid-row > :last-child { text-align: left !important; font-size: 10.5px !important; }",
+      "#firstRows.history-grid .history-kind { color: #a36300 !important; background: transparent !important; border: 0 !important; padding: 0 !important; }",
+      "#firstRows.history-grid .history-kind.available { color: #08783f !important; }",
+      "#firstRows.history-grid .history-status { color: #17211b !important; background: transparent !important; border: 0 !important; padding: 0 !important; }",
+      "@media (min-width: 760px) { #firstRows.history-grid .grid-head, #firstRows.history-grid .grid-row { grid-template-columns: 132px 92px 132px 108px 110px 74px 74px minmax(260px, 1fr) !important; min-width: 1040px !important; gap: 8px !important; } #firstRows.history-grid .grid-head > *, #firstRows.history-grid .grid-row > * { font-size: 13px !important; } }"
+    ].join("\n");
+    document.head.appendChild(style);
+  }
+  function splitRoom(roomText) {
+    const raw = text(roomText);
+    const capMatch = raw.match(/\((\d+)\s*인\)/);
+    const capacity = capMatch ? capMatch[1] + "인실" : "";
+    const room = raw.replace(/\s*\(\d+\s*인\)\s*/g, "").replace(/번$/, "호");
+    return { room, capacity };
+  }
+  function normalizeKind(value) {
+    const raw = text(value);
+    if (/예약/.test(raw)) return "예약가능";
+    return "취소진행중";
+  }
+  function normalizeStatus(value) {
+    const raw = text(value) || "발생";
+    if (/예약\s*가능|예약가능/.test(raw)) return "종료 → 예약 가능";
+    if (/예약\s*마감|예약마감/.test(raw)) return "종료 → 예약 마감";
+    if (/선점|예약\s*중|예약중|예약\s*완료|예약완료|결제/.test(raw)) return "종료 → 선점/예약 중";
+    return raw;
+  }
+  function makeCell(value, className) {
+    const span = document.createElement("span");
+    if (className) span.className = className;
+    span.textContent = text(value);
+    return span;
+  }
+  function rowValues(row) {
+    const cells = Array.from(row.children).map(cell => text(cell.textContent));
+    if (cells.length >= 8) return cells.slice(0, 8);
+    if (cells.length < 6 || cells.join("").includes("없습니다")) return null;
+    const [date, facility, roomText, detected, kindRaw, statusRaw] = cells;
+    const { room, capacity } = splitRoom(roomText);
+    const kind = normalizeKind(kindRaw);
+    const status = normalizeStatus(statusRaw);
+    const message = [date, facility, roomText, status].filter(Boolean).join(" ");
+    return [detected, kind, status, date, facility, capacity, room, message];
+  }
+  function enforceRecentHistory() {
+    ensureStyle();
+    const wrap = document.querySelector("#firstRows.history-grid");
+    if (!wrap) return;
+    const currentHead = Array.from(wrap.querySelectorAll(":scope > .grid-head > *")).map(el => text(el.textContent)).join("|");
+    const rows = Array.from(wrap.querySelectorAll(":scope > .grid-row"));
+    if (currentHead === HEADERS.join("|") && rows.every(row => row.children.length === 8)) return;
+    const values = rows.map(rowValues).filter(Boolean);
+    wrap.innerHTML = "";
+    const head = document.createElement("div");
+    head.className = "grid-head";
+    HEADERS.forEach(label => head.appendChild(makeCell(label)));
+    wrap.appendChild(head);
+    if (!values.length) {
+      const empty = document.createElement("div");
+      empty.className = "grid-row empty";
+      empty.textContent = "최근 이력이 없습니다.";
+      wrap.appendChild(empty);
+      return;
+    }
+    values.forEach(values => {
+      const row = document.createElement("div");
+      row.className = "grid-row";
+      values.forEach((value, index) => {
+        const className = index === 1 ? "history-kind" + (/예약/.test(value) ? " available" : " canceling") : (index === 2 ? "history-status" : "");
+        row.appendChild(makeCell(value, className));
+      });
+      wrap.appendChild(row);
+    });
+  }
+  setInterval(enforceRecentHistory, 500);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", enforceRecentHistory);
+  else enforceRecentHistory();
+})();
+</script>
