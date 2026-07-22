@@ -1034,7 +1034,8 @@ async function syncStateSignal() {
       }
     }
   } catch (error) {}
-  if (!synced || activeForView().length === 0) {
+  const activeSnapshot = activeForView();
+  if (!synced || activeSnapshot.length === 0 || !activeSnapshot.some(item => item.category === "자동차캠핑장")) {
     await syncStateSignalFromHtml();
   }
 }
