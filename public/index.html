@@ -498,13 +498,32 @@
 
     .history-grid .grid-head,
     .history-grid .grid-row {
-      grid-template-columns: 96px 116px 72px 86px 64px;
+      grid-template-columns: 42px 58px 80px 42px 56px minmax(74px, 1fr);
+      gap: 4px;
     }
 
-    .history-grid .grid-row span:nth-child(5) {
-      color: #8b0000;
+    .history-grid .grid-row .history-kind {
+      color: #b85a00;
       font-family: var(--sans);
-      font-weight: 950;
+      font-weight: 900;
+    }
+
+    .history-grid .grid-row .history-status {
+      color: #111;
+      font-family: var(--sans);
+      font-weight: 900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-grid .grid-head span,
+    .history-grid .grid-row span,
+    .history-grid .grid-row time,
+    .history-grid .grid-row strong {
+      text-align: left;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .grid-head span:nth-child(3),
@@ -553,7 +572,8 @@
 
       .history-grid .grid-head,
       .history-grid .grid-row {
-        grid-template-columns: 120px 150px 92px 110px 76px;
+        grid-template-columns: 72px 84px 126px 72px 124px minmax(94px, 1fr);
+        gap: 8px;
       }
     }
 
@@ -1259,12 +1279,12 @@
       if (type === "history") {
         return `
           <div class="grid-head">
+            <span>시간</span>
+            <span>종류</span>
+            <span>상태</span>
             <span>날짜</span>
             <span>시설</span>
             <span>객실</span>
-            <span>감지</span>
-            <span>종류</span>
-            <span>상태</span>
           </div>
         `;
       }
@@ -1349,13 +1369,15 @@
     function statusText(row) {
       const raw = String(row.status || row.state || "").trim();
       const message = String(row.message || "").trim();
-      if (raw && raw !== "Y" && raw !== "N") return raw;
+      const combined = `${raw} ${message} ${row.eventType || ""} ${row.event_type || ""}`;
       if (message.includes("종료")) {
         const match = message.match(/종료\s*[→>-]\s*([^|]+)/);
         return match ? `종료 → ${match[1].trim()}` : "종료";
       }
+      if (/예약\s*마감|예약마감|예약\s*불가|예약불가|마감|불가/i.test(combined)) return "종료 → 예약 마감";
+      if (/선점|예약\s*완료|예약완료|예약\s*중|예약중|결제\s*완료|결제완료/i.test(combined)) return "종료 → 선점/예약 중";
       if (raw === "Y" || historyKind(row) === "예약가능") return "종료 → 예약 가능";
-      return "발생";
+      return "취소 진행중";
     }
 
     function historyRowMarkup(row) {
@@ -1368,12 +1390,12 @@
       const state = safeText(statusText(row));
       return `
         <div class="grid-row">
-          <time>${date}</time>
-          <strong>${name}</strong>
-          <span>${room}</span>
-          <span>${timeText}</span>
+          <time>${timeText}</time>
           <span class="history-kind ${kindClass}">${kind}</span>
           <span class="history-status">${state}</span>
+          <span>${date}</span>
+          <strong>${name}</strong>
+          <span>${room}</span>
         </div>
       `;
     }
@@ -1566,7 +1588,7 @@
     function render() {
       const data = visibleRows(rows, { ignoreDate: true });
       const firstData = visibleRows(
-        [...firstSeen.values()].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko")),
+        [...firstSeen.values()].sort((a, b) => Number(b.detectedMs || 0) - Number(a.detectedMs || 0) || a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ko")),
         { ignoreDate: true }
       );
       chips.forEach(chip => {
