@@ -17,6 +17,7 @@ const ACTIVE_FILE = path.join(DATA_DIR, "active.json");
 const MAX_EVENTS = 2000;
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || "6185";
 const STATE_SIGNAL_URL = process.env.STATE_SIGNAL_URL || "https://mangsang-alarm-dashboard.onrender.com/api/state";
+const REFERENCE_DASHBOARD_URLS = (process.env.REFERENCE_DASHBOARD_URLS || "https://mangsang-alarm-dashboard.onrender.com/,http://112.217.206.107:8788/").split(",").map(value => value.trim()).filter(Boolean);
 const LOCAL_REPORT_FRESH_MS = 180 * 1000;
 const UI_FIX_CSS = String.raw`
 <style id="codex-ui-fixes">
@@ -883,37 +884,81 @@ function decodeHtmlText(text) {
     .trim();
 }
 
-function parseReferenceDashboardHtml(html) {
+function parseReferenceDashboardHtml(html, sourceUrl = "") {
   const raw = String(html || "");
   const receivedText = decodeHtmlText((raw.match(/<div class="info-label">\s*마지막\s*<\/div>\s*<div class="info-value">([\s\S]*?)<\/div>/) || [])[1]) || new Date().toISOString();
-  const cancelingBlock = (raw.match(/id="cancelingNow"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || "";
   const rows = [];
-  for (const match of cancelingBlock.matchAll(/<tr[\s\S]*?>([\s\S]*?)<\/tr>/g)) {
-    const cells = Array.from(match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)).map(cell => decodeHtmlText(cell[1]));
-    if (cells.length < 5) continue;
+  const tableMatches = Array.from(raw.matchAll(/<table[\s\S]*?<\/table>/gi)).map(match => match[0]);
+
+  function cellsOf(rowHtml) {
+    return Array.from(String(rowHtml || "").matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)).map(cell => decodeHtmlText(cell[1]));
+  }
+
+  function pushActiveRow(cells, indexes, detectedFallback) {
+    const date = cells[indexes.date] || "";
+    const facility = cells[indexes.facility] || "";
+    const people = indexes.people >= 0 ? cells[indexes.people] : "";
+    const room = cells[indexes.room] || "";
+    const detected = cells[indexes.detected] || detectedFallback || receivedText;
+    if (!date || !facility || !room || /없음|없습니다/.test(cells.join(" "))) return;
     rows.push({
-      target_date: cells[0],
-      date: cells[0],
-      facility: cells[1],
-      category: cells[1],
-      room: cells[2],
-      room_name: cells[2],
-      detected: cells[3],
-      time: cells[3],
-      expected: cells[4],
-      remain: cells[5] || "",
+      target_date: date,
+      date,
+      facility,
+      category: facility,
+      room,
+      room_name: room,
+      capacityText: people,
+      detected,
+      detectedAt: detected,
+      time: detected,
+      expected: indexes.expected >= 0 ? cells[indexes.expected] : "",
+      remain: indexes.remain >= 0 ? cells[indexes.remain] : "",
       status: "N",
+      canclYn: "N",
       event_type: "canceling",
       state: "취소 진행중",
       statusText: "취소 진행중",
-      message: [cells[0], cells[1], cells[2], "취소 진행중"].join(" ")
+      message: [date, facility, room, people, "취소 진행중"].filter(Boolean).join(" ")
     });
   }
+
+  for (const table of tableMatches) {
+    const rowHtmls = Array.from(table.matchAll(/<tr[\s\S]*?<\/tr>/gi)).map(match => match[0]);
+    if (!rowHtmls.length) continue;
+    const firstCells = cellsOf(rowHtmls[0]);
+    const headerText = firstCells.join(" ");
+    const looksActiveTable = /날짜/.test(headerText) && /시설/.test(headerText) && /객실/.test(headerText) && /감지/.test(headerText) && !/종류/.test(headerText);
+    if (!looksActiveTable) continue;
+    const indexes = {
+      date: firstCells.findIndex(value => /날짜|체크인/.test(value)),
+      facility: firstCells.findIndex(value => /시설/.test(value)),
+      people: firstCells.findIndex(value => /인원/.test(value)),
+      room: firstCells.findIndex(value => /객실|사이트/.test(value)),
+      detected: firstCells.findIndex(value => /감지/.test(value)),
+      expected: firstCells.findIndex(value => /예상/.test(value)),
+      remain: firstCells.findIndex(value => /남은시간/.test(value))
+    };
+    if (indexes.date < 0 || indexes.facility < 0 || indexes.room < 0 || indexes.detected < 0) continue;
+    rowHtmls.slice(1).forEach(rowHtml => {
+      const cells = cellsOf(rowHtml);
+      if (cells.length <= Math.max(indexes.date, indexes.facility, indexes.room, indexes.detected)) return;
+      pushActiveRow(cells, indexes, receivedText);
+    });
+  }
+
+  const legacyBlock = (raw.match(/id="cancelingNow"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || "";
+  for (const match of legacyBlock.matchAll(/<tr[\s\S]*?>([\s\S]*?)<\/tr>/g)) {
+    const cells = Array.from(match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)).map(cell => decodeHtmlText(cell[1]));
+    if (cells.length < 5) continue;
+    pushActiveRow(cells, { date: 0, facility: 1, people: -1, room: 2, detected: 3, expected: 4, remain: 5 }, receivedText);
+  }
+
   return {
     heartbeat: {
       received_at: new Date().toISOString(),
       status: "running",
-      client: "mangsang-dashboard-html",
+      client: sourceUrl ? "dashboard-html:" + sourceUrl : "mangsang-dashboard-html",
       source_received_at: receivedText,
       canceling_count: rows.length,
       canceling_items: rows,
@@ -924,25 +969,44 @@ function parseReferenceDashboardHtml(html) {
 }
 
 async function syncStateSignalFromHtml() {
-  const pageUrl = "https://mangsang-alarm-dashboard.onrender.com/";
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 4500);
-  try {
-    const response = await fetch(pageUrl, {
-      cache: "no-store",
-      signal: controller.signal,
-      headers: { "User-Agent": "go-mangsang-dashboard-html-sync/1.0" }
-    });
-    clearTimeout(timer);
-    if (!response.ok) return false;
-    const html = await response.text();
-    const payload = parseReferenceDashboardHtml(html);
-    if (payload.heartbeat && Array.isArray(payload.heartbeat.canceling_items)) {
-      handleHeartbeatPayload(payload);
-      return true;
+  const collected = [];
+  let reachedSource = false;
+  let sourceNames = [];
+  for (const pageUrl of REFERENCE_DASHBOARD_URLS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
+    try {
+      const response = await fetch(pageUrl, {
+        cache: "no-store",
+        signal: controller.signal,
+        headers: { "User-Agent": "go-mangsang-dashboard-html-sync/1.1" }
+      });
+      clearTimeout(timer);
+      if (!response.ok) continue;
+      const html = await response.text();
+      const payload = parseReferenceDashboardHtml(html, pageUrl);
+      const items = payload.heartbeat && Array.isArray(payload.heartbeat.canceling_items) ? payload.heartbeat.canceling_items : [];
+      reachedSource = true;
+      sourceNames.push(pageUrl);
+      collected.push(...items);
+    } catch (error) {
+      try { clearTimeout(timer); } catch (_) {}
     }
-  } catch (error) {
-    try { clearTimeout(timer); } catch (_) {}
+  }
+  if (reachedSource) {
+    handleHeartbeatPayload({
+      heartbeat: {
+        received_at: new Date().toISOString(),
+        status: "running",
+        client: "dashboard-html-merge",
+        sources: sourceNames,
+        canceling_count: collected.length,
+        canceling_items: collected,
+        available_count: 0,
+        available_items: []
+      }
+    });
+    return true;
   }
   return false;
 }
