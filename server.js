@@ -335,7 +335,9 @@ body #firstRows.history-grid .grid-row .history-status.closed { color: #075985 !
     const wrap = document.querySelector("#firstRows.history-grid");
     if (!wrap) return;
     const signature = JSON.stringify(items.map(item => [item.detected, item.kind, item.status, item.date, item.facility, item.room, item.sortAt]));
-    if (wrap.dataset.codexHistorySignature === signature) return;
+    const expectedHeader = "시간|종류|상태|날짜|시설|객실";
+    const currentHeader = Array.from(wrap.querySelectorAll(".grid-head > *")).map(el => text(el.textContent)).join("|");
+    if (wrap.dataset.codexHistorySignature === signature && currentHeader === expectedHeader) return;
     wrap.dataset.codexHistorySignature = signature;
     if (!items.length) { wrap.innerHTML = '<div class="empty">누적 감지 기록이 없습니다.</div>'; return; }
     wrap.innerHTML = '<div class="grid-head"><span>시간</span><span>종류</span><span>상태</span><span>날짜</span><span>시설</span><span>객실</span></div>' + items.map(item => {
