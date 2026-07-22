@@ -183,6 +183,29 @@ body #firstRows.history-grid .grid-row { min-height: 33px !important; }
   body #firstRows.history-grid .grid-row .history-kind,
   body #firstRows.history-grid .grid-row .history-status { font-size: 13px !important; }
 }
+
+
+/* history list reads by detection time first */
+body #firstRows.history-grid .grid-head,
+body #firstRows.history-grid .grid-row {
+  grid-template-columns: 42px 48px minmax(70px, 1fr) 39px 50px 64px !important;
+}
+body #firstRows.history-grid .grid-row .history-status.active { color: #c45a00 !important; }
+body #firstRows.history-grid .grid-row .history-status.available { color: #08783f !important; }
+body #firstRows.history-grid .grid-row .history-status.closed { color: #075985 !important; }
+@media (max-width: 390px) {
+  body #firstRows.history-grid .grid-head,
+  body #firstRows.history-grid .grid-row {
+    grid-template-columns: 40px 44px minmax(62px, 1fr) 38px 48px 62px !important;
+  }
+}
+@media (min-width: 760px) {
+  body #firstRows.history-grid .grid-head,
+  body #firstRows.history-grid .grid-row {
+    grid-template-columns: 90px 104px minmax(170px, 1fr) 96px 124px 120px !important;
+  }
+}
+
 </style>
 <script id="codex-dashboard-refine" defer>
 (() => {
@@ -220,6 +243,34 @@ body #firstRows.history-grid .grid-row { min-height: 33px !important; }
     if (!Number.isFinite(d.getTime())) return raw;
     return two(d.getHours()) + ":" + two(d.getMinutes());
   }
+  function sortAt(dateValue, timeValue, rawValue) {
+    const rawDate = text(dateValue);
+    const rawTime = text(timeValue);
+    const raw = text(rawValue);
+    const parsed = new Date(raw);
+    if (Number.isFinite(parsed.getTime())) return parsed.getTime();
+    const y = new Date().getFullYear();
+    const dm = rawDate.match(/(?:(\d{4})-)?(\d{1,2})-(\d{1,2})/);
+    const tm = rawTime.match(/(\d{1,2}):(\d{2})/);
+    if (dm && tm) return new Date(Number(dm[1] || y), Number(dm[2]) - 1, Number(dm[3]), Number(tm[1]), Number(tm[2])).getTime();
+    if (tm) return Number(tm[1]) * 60 + Number(tm[2]);
+    return 0;
+  }
+  function statusClass(status) {
+    const value = text(status);
+    if (/진행중|발생/.test(value)) return "active";
+    if (/예약 가능/.test(value)) return "available";
+    if (/마감|선점|예약 중|예약중/.test(value)) return "closed";
+    return "";
+  }
+  function displayStatus(record, info) {
+    const raw = text(record.statusLabel) || text(record.status_text) || text(record.statusText) || text(record.status);
+    if (/^발생$/.test(raw) && info.kind === "취소중") return "취소 진행중";
+    if (/^발생$/.test(raw)) return "예약 가능 발생";
+    if (raw && raw !== "N" && raw !== "Y") return raw;
+    if (info.kind === "취소중" && info.status === "발생") return "취소 진행중";
+    return info.status || "발생";
+  }
   function statusInfo(item) {
     const combined = [item && item.event_type, item && item.eventType, item && item.kind, item && item.status, item && item.state, item && item.statusText, item && item.message].map(text).join(" ");
     const canclYn = text(item && item.canclYn).toUpperCase();
@@ -237,14 +288,20 @@ body #firstRows.history-grid .grid-row { min-height: 33px !important; }
   function recordKey(r) { return [r.date, r.facility, r.room].join("|"); }
   function normalizeRecord(record) {
     const info = statusInfo(record || {});
+    const sourceTime = record.detected || record.detected_at || record.detectedAt || record.received_at || record.time || record.created_at || record.updated_at;
+    const date = text(record.date || record.target_date || record.targetDate || record.beginDate || record.resveBeginDe).replace(/^\d{4}-/, "");
+    const detected = shortClock(sourceTime);
+    const kind = text(record.kind) || info.kind;
+    const status = displayStatus(record || {}, { ...info, kind });
     return {
-      date: text(record.date || record.target_date || record.targetDate || record.beginDate || record.resveBeginDe).replace(/^\d{4}-/, ""),
+      date,
       facility: facilityName(record.facility || record.category || record.fcltyNm || record.name),
       room: roomWithCapacity(record.room || record.room_name || record.roomName || record.roomNo, record),
-      detected: shortClock(record.detected || record.detected_at || record.detectedAt || record.received_at || record.time || record.created_at || record.updated_at),
-      kind: text(record.kind) || info.kind,
-      kindClass: /예약/.test(text(record.kind) || info.kind) ? "available" : info.cls,
-      status: text(record.statusLabel) || text(record.status_text) || text(record.statusText) || info.status
+      detected,
+      sortAt: sortAt(date, detected, sourceTime),
+      kind,
+      kindClass: /예약/.test(kind) ? "available" : info.cls,
+      status
     };
   }
   function loadHistory() {
@@ -261,28 +318,30 @@ body #firstRows.history-grid .grid-row { min-height: 33px !important; }
       const key = recordKey(record);
       const prev = map.get(key);
       if (!prev) map.set(key, record);
-      else map.set(key, { ...prev, kind: record.kind || prev.kind, kindClass: record.kindClass || prev.kindClass, status: record.status !== "발생" ? record.status : prev.status, detected: prev.detected || record.detected });
+      else map.set(key, { ...prev, kind: record.kind || prev.kind, kindClass: record.kindClass || prev.kindClass, status: record.status && record.status !== "발생" ? record.status : prev.status, detected: prev.detected || record.detected, sortAt: Math.max(Number(prev.sortAt || 0), Number(record.sortAt || 0)) });
     });
-    return Array.from(map.values()).sort((a, b) => (a.date + a.facility + a.room).localeCompare(b.date + b.facility + b.room, "ko"));
+    return Array.from(map.values()).sort((a, b) => (Number(b.sortAt || 0) - Number(a.sortAt || 0)) || (a.date + a.facility + a.room).localeCompare(b.date + b.facility + b.room, "ko"));
   }
   function rowsToRecords(selector, active) {
     return Array.from(document.querySelectorAll(selector + " .grid-row")).map(row => {
       const c = Array.from(row.children).map(el => text(el.textContent));
       if (c.length < 4) return null;
-      return normalizeRecord({ date: c[0], facility: c[1], room: c[2], detected: c[3], kind: active ? "취소중" : c[4], status: active ? "발생" : c[5], canclYn: active ? "N" : "" });
+      if (active) return normalizeRecord({ date: c[0], facility: c[1], room: c[2], detected: c[3], kind: "취소중", status: "취소 진행중", canclYn: "N" });
+      if (/^\d{1,2}:\d{2}/.test(c[0])) return normalizeRecord({ detected: c[0], kind: c[1], status: c[2], date: c[3], facility: c[4], room: c[5] });
+      return normalizeRecord({ date: c[0], facility: c[1], room: c[2], detected: c[3], kind: c[4], status: c[5] });
     }).filter(Boolean);
   }
   function renderHistory(items) {
     const wrap = document.querySelector("#firstRows.history-grid");
     if (!wrap) return;
-    const signature = JSON.stringify(items.map(item => [item.date, item.facility, item.room, item.detected, item.kind, item.status]));
+    const signature = JSON.stringify(items.map(item => [item.detected, item.kind, item.status, item.date, item.facility, item.room, item.sortAt]));
     if (wrap.dataset.codexHistorySignature === signature) return;
     wrap.dataset.codexHistorySignature = signature;
     if (!items.length) { wrap.innerHTML = '<div class="empty">누적 감지 기록이 없습니다.</div>'; return; }
-    wrap.innerHTML = '<div class="grid-head"><span>날짜</span><span>시설</span><span>객실</span><span>감지</span><span>종류</span><span>상태</span></div>' + items.map(item => {
+    wrap.innerHTML = '<div class="grid-head"><span>시간</span><span>종류</span><span>상태</span><span>날짜</span><span>시설</span><span>객실</span></div>' + items.map(item => {
       const cls = /예약/.test(item.kind) ? "available" : "canceling";
-      const ended = /^종료/.test(item.status) ? " ended" : "";
-      return '<div class="grid-row"><time>' + escapeHtml(item.date).replace(/^\d{4}-/, "") + '</time><strong>' + escapeHtml(item.facility) + '</strong><span>' + escapeHtml(item.room) + '</span><span>' + escapeHtml(item.detected) + '</span><span class="history-kind ' + cls + '">' + escapeHtml(item.kind) + '</span><span class="history-status' + ended + '">' + escapeHtml(item.status || "발생") + '</span></div>';
+      const statusCls = statusClass(item.status);
+      return '<div class="grid-row"><time>' + escapeHtml(item.detected) + '</time><span class="history-kind ' + cls + '">' + escapeHtml(item.kind) + '</span><span class="history-status ' + statusCls + '">' + escapeHtml(item.status || "발생") + '</span><span>' + escapeHtml(item.date).replace(/^\d{4}-/, "") + '</span><strong>' + escapeHtml(item.facility) + '</strong><span>' + escapeHtml(item.room) + '</span></div>';
     }).join("");
   }
   function applyRoomCapacityLabels() {
