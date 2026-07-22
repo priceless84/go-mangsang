@@ -18,6 +18,27 @@ const MAX_EVENTS = 2000;
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD || "6185";
 const STATE_SIGNAL_URL = process.env.STATE_SIGNAL_URL || "https://mangsang-alarm-dashboard.onrender.com/api/state";
 const REFERENCE_DASHBOARD_URLS = (process.env.REFERENCE_DASHBOARD_URLS || "https://mangsang-alarm-dashboard.onrender.com/,http://112.217.206.107:8788/").split(",").map(value => value.trim()).filter(Boolean);
+const TARGET_FACILITIES = (process.env.TARGET_FACILITIES || "든바다,난바다,허허바다,자동차캠핑장").split(",").map(value => value.trim()).filter(Boolean);
+const TARGET_FACILITIES_TEXT = TARGET_FACILITIES.join(",");
+function targetFacilitiesFrom(value) {
+  if (Array.isArray(value)) return value.map(item => String(item || "").trim()).filter(Boolean).join(",");
+  const text = String(value || "").trim();
+  return text || TARGET_FACILITIES_TEXT;
+}
+function referenceDashboardUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    const facilities = TARGET_FACILITIES_TEXT;
+    url.searchParams.set("facilities", facilities);
+    url.searchParams.set("facility", facilities);
+    url.searchParams.set("targetFacilities", facilities);
+    url.searchParams.set("includeAutoCamping", "1");
+    url.searchParams.set("codexAuto", Date.now().toString());
+    return url.toString();
+  } catch (_) {
+    return rawUrl;
+  }
+}
 const LOCAL_REPORT_FRESH_MS = 180 * 1000;
 const UI_FIX_CSS = String.raw`
 <style id="codex-ui-fixes">
@@ -440,7 +461,8 @@ const state = {
   lastRefreshAt: null,
   previousRefreshAt: null,
   config: {
-    intervalSec: 60
+    intervalSec: 60,
+    facilities: TARGET_FACILITIES
   },
   monitor: {
     count: 0,
@@ -448,7 +470,8 @@ const state = {
     activeCount: 0,
     range: "-",
     intervalSec: 60,
-    source: "pc-local"
+    source: "pc-local",
+    facilities: TARGET_FACILITIES_TEXT
   },
   heartbeat: null,
   active: [],
@@ -792,7 +815,8 @@ function normalizeHeartbeat(payload) {
   return {
     ...heartbeat,
     received_at: heartbeat.received_at || heartbeat.receivedAt || payload.received_at || now,
-    client: heartbeat.client || payload.client || heartbeat.source || payload.source || "state-signal"
+    client: heartbeat.client || payload.client || heartbeat.source || payload.source || "state-signal",
+    facilities: targetFacilitiesFrom(heartbeat.facilities || heartbeat.targetFacilities || payload.facilities || payload.targetFacilities)
   };
 }
 
@@ -837,7 +861,8 @@ function handleHeartbeatPayload(payload) {
     ...state.monitor,
     count: Number(heartbeat.count || state.monitor.count || 0),
     activeCount: uniqueActive.length,
-    source: String(heartbeat.client || "state-signal")
+    source: String(heartbeat.client || "state-signal"),
+    facilities: targetFacilitiesFrom(heartbeat.facilities || heartbeat.targetFacilities)
   };
   monitorError = String(heartbeat.error || heartbeat.monitorError || heartbeat.message || "");
 
@@ -976,7 +1001,8 @@ async function syncStateSignalFromHtml() {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4500);
     try {
-      const response = await fetch(pageUrl, {
+      const requestUrl = referenceDashboardUrl(pageUrl);
+      const response = await fetch(requestUrl, {
         cache: "no-store",
         signal: controller.signal,
         headers: { "User-Agent": "go-mangsang-dashboard-html-sync/1.1" }
@@ -984,10 +1010,10 @@ async function syncStateSignalFromHtml() {
       clearTimeout(timer);
       if (!response.ok) continue;
       const html = await response.text();
-      const payload = parseReferenceDashboardHtml(html, pageUrl);
+      const payload = parseReferenceDashboardHtml(html, requestUrl);
       const items = payload.heartbeat && Array.isArray(payload.heartbeat.canceling_items) ? payload.heartbeat.canceling_items : [];
       reachedSource = true;
-      sourceNames.push(pageUrl);
+      sourceNames.push(requestUrl);
       collected.push(...items);
     } catch (error) {
       try { clearTimeout(timer); } catch (_) {}
@@ -1000,6 +1026,8 @@ async function syncStateSignalFromHtml() {
         status: "running",
         client: "dashboard-html-merge",
         sources: sourceNames,
+        facilities: TARGET_FACILITIES_TEXT,
+        targetFacilities: TARGET_FACILITIES,
         canceling_count: collected.length,
         canceling_items: collected,
         available_count: 0,
@@ -1198,7 +1226,7 @@ const server = http.createServer(async (req, res) => {
 
 
     if (req.method === "GET" && url.pathname === "/api/config") {
-      sendJson(res, 200, { ok: true, config: state.config });
+      sendJson(res, 200, { ok: true, config: state.config, targetFacilities: TARGET_FACILITIES });
       return;
     }
 
@@ -1210,7 +1238,9 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       state.config.intervalSec = normalizeIntervalSec(payload.intervalSec);
+      state.config.facilities = TARGET_FACILITIES;
       state.monitor.intervalSec = state.config.intervalSec;
+      state.monitor.facilities = TARGET_FACILITIES_TEXT;
       sendJson(res, 200, { ok: true, config: state.config });
       return;
     }
@@ -1251,6 +1281,7 @@ const server = http.createServer(async (req, res) => {
         range: String(payload.range || "-"),
         intervalSec: Number(payload.intervalSec || state.config.intervalSec),
         source: String(payload.source || "pc-local"),
+        facilities: targetFacilitiesFrom(payload.facilities || payload.targetFacilities),
         failures: Number(payload.failures || 0)
       };
       monitorError = String(payload.monitorError || payload.error || "");
