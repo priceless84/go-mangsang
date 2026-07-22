@@ -820,6 +820,53 @@ function normalizeHeartbeat(payload) {
   };
 }
 
+function facilityTextOf(value) {
+  if (Array.isArray(value)) return value.map(item => String(item || "").trim()).filter(Boolean).join(",");
+  return String(value || "").trim();
+}
+
+function facilityMatchesName(value, facility) {
+  const text = String(value || "").trim();
+  if (!text || !facility) return false;
+  if (facility === "자동차캠핑장") return /자동차|오토|캠핑/.test(text);
+  return text.includes(facility);
+}
+
+function itemMatchesFacility(item, facility) {
+  return facilityMatchesName(item && (item.category || item.facility || item.name || item.fcltyNm), facility);
+}
+
+function payloadFacilityText(payload, heartbeat) {
+  const rawHeartbeat = payload && payload.heartbeat && typeof payload.heartbeat === "object" ? payload.heartbeat : payload;
+  return facilityTextOf(
+    (rawHeartbeat && (rawHeartbeat.facilities || rawHeartbeat.targetFacilities || rawHeartbeat.facility)) ||
+    (payload && (payload.facilities || payload.targetFacilities || payload.facility)) ||
+    ""
+  );
+}
+
+function heartbeatCoversFacility(payload, heartbeat, normalizedItems, facility) {
+  const source = String(heartbeat && heartbeat.client || "");
+  if (/dashboard-html/.test(source)) {
+    return normalizedItems.some(item => itemMatchesFacility(item, facility));
+  }
+  const facilities = payloadFacilityText(payload, heartbeat);
+  if (!facilities) return false;
+  return facilityMatchesName(facilities, facility);
+}
+
+function mergeActiveWithPreviousForUncoveredFacilities(nextActive, payload, heartbeat) {
+  const map = new Map(nextActive.map(item => [item.id, item]));
+  for (const facility of TARGET_FACILITIES) {
+    if (heartbeatCoversFacility(payload, heartbeat, nextActive, facility)) continue;
+    for (const previous of state.active || []) {
+      if (itemMatchesFacility(previous, facility)) map.set(previous.id, previous);
+    }
+  }
+  return Array.from(map.values());
+}
+
+
 
 function eventForState(item) {
   const rawEventType = String(item.event_type || item.eventType || "").trim();
@@ -847,12 +894,16 @@ function handleHeartbeatPayload(payload) {
     }))
     .filter(item => item.date !== "-" && item.category !== "-" && item.roomName !== "-");
   const uniqueActive = Array.from(new Map(active.map(item => [item.id, item])).values());
+  const hasActivePayload = Array.isArray(heartbeat.canceling_items) || Array.isArray(heartbeat.canceling) || Array.isArray(heartbeat.active) || Array.isArray(heartbeat.canceling_details);
+  const mergedActive = hasActivePayload
+    ? mergeActiveWithPreviousForUncoveredFacilities(uniqueActive, payload || {}, heartbeat)
+    : uniqueActive;
 
 
   state.heartbeat = {
     ...heartbeat,
-    canceling_count: uniqueActive.length,
-    canceling_items: uniqueActive.map(eventForState)
+    canceling_count: mergedActive.length,
+    canceling_items: mergedActive.map(eventForState)
   };
   state.previousRefreshAt = state.lastRefreshAt;
   state.lastRefreshAt = heartbeat.received_at;
@@ -860,19 +911,19 @@ function handleHeartbeatPayload(payload) {
   state.monitor = {
     ...state.monitor,
     count: Number(heartbeat.count || state.monitor.count || 0),
-    activeCount: uniqueActive.length,
+    activeCount: mergedActive.length,
     source: String(heartbeat.client || "state-signal"),
     facilities: targetFacilitiesFrom(heartbeat.facilities || heartbeat.targetFacilities)
   };
   monitorError = String(heartbeat.error || heartbeat.monitorError || heartbeat.message || "");
 
 
-  if (Array.isArray(heartbeat.canceling_items) || Array.isArray(heartbeat.canceling) || Array.isArray(heartbeat.active) || Array.isArray(heartbeat.canceling_details)) {
-    state.active = uniqueActive;
+  if (hasActivePayload) {
+    state.active = mergedActive;
     saveActive();
   }
-  if (uniqueActive.length > 0) upsertEvents(uniqueActive);
-  return uniqueActive;
+  if (mergedActive.length > 0) upsertEvents(mergedActive);
+  return mergedActive;
 }
 
 
@@ -1041,17 +1092,22 @@ async function syncStateSignalFromHtml() {
 
 
 async function syncStateSignal() {
-  if (hasFreshLocalReport()) return;
-  if (!STATE_SIGNAL_URL || Date.now() - lastStateSyncAt < 5000) return;
+  const activeSnapshotBefore = activeForView();
+  const hasAutoCamping = activeSnapshotBefore.some(item => itemMatchesFacility(item, "자동차캠핑장"));
+  if (hasFreshLocalReport() && hasAutoCamping) return;
+  if (!STATE_SIGNAL_URL || Date.now() - lastStateSyncAt < 5000) {
+    if (hasFreshLocalReport() && !hasAutoCamping) await syncStateSignalFromHtml();
+    return;
+  }
   lastStateSyncAt = Date.now();
   let synced = false;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3500);
-    const response = await fetch(STATE_SIGNAL_URL, {
+    const response = await fetch(referenceDashboardUrl(STATE_SIGNAL_URL), {
       cache: "no-store",
       signal: controller.signal,
-      headers: { "User-Agent": "go-mangsang-state-sync/1.0" }
+      headers: { "User-Agent": "go-mangsang-state-sync/1.1" }
     });
     clearTimeout(timer);
     if (response.ok) {
@@ -1063,7 +1119,7 @@ async function syncStateSignal() {
     }
   } catch (error) {}
   const activeSnapshot = activeForView();
-  if (!synced || activeSnapshot.length === 0 || !activeSnapshot.some(item => item.category === "자동차캠핑장")) {
+  if (!synced || activeSnapshot.length === 0 || !activeSnapshot.some(item => itemMatchesFacility(item, "자동차캠핑장"))) {
     await syncStateSignalFromHtml();
   }
 }
@@ -1272,7 +1328,7 @@ const server = http.createServer(async (req, res) => {
       state.lastRefreshAt = payload.refreshedAt || now;
       state.lastReportAt = now;
       const allRequestsFailed = Number(payload.totalRequests || 0) > 0 && Number(payload.failures || 0) >= Number(payload.totalRequests || 0);
-      state.active = allRequestsFailed ? [] : active;
+      state.active = allRequestsFailed ? state.active : mergeActiveWithPreviousForUncoveredFacilities(active, payload, payload);
       saveActive();
       state.monitor = {
         count: Number(payload.count || 0),
