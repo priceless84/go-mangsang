@@ -237,7 +237,8 @@ body #firstRows.history-grid .grid-row .history-status.closed { color: #075985 !
     "난바다": {"101":"8","102":"6","103":"4","104":"4","105":"6","106":"10","107":"4","108":"4","109":"8","110":"6","111":"4","112":"4","113":"8","114":"6","115":"10"},
     "허허바다": {"101":"10","102":"8","103":"4","104":"4","105":"6","106":"4","107":"4","108":"10"}
   };
-  const state = { lastRefresh: "-", intervalSec: 60, lastRefreshMs: 0, cancelCount: 0, syncing: false };
+  const state = { lastRefresh: "-", intervalSec: 60, lastRefreshMs: 0, cancelCount: 0, syncing: false, lastActiveHtml: "", lastActiveAt: 0 };
+  const ACTIVE_EMPTY_GRACE_MS = 15000;
   const text = v => String(v == null ? "" : v).trim();
   const two = v => String(v).padStart(2, "0");
   const escapeHtml = v => text(v).replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
@@ -413,6 +414,25 @@ body #firstRows.history-grid .grid-row .history-status.closed { color: #075985 !
       if (v.includes("취소 시설별 최초 감지 기록")) el.textContent = "감지기록 누적";
     });
   }
+  function stabilizeActiveRows(active) {
+    const wrap = document.querySelector("#activeRows");
+    const incoming = Array.isArray(active) ? active : [];
+    const domRecords = rowsToRecords("#activeRows", true);
+    const hasIncoming = incoming.length > 0;
+    const hasDomRows = domRecords.length > 0;
+    if (hasIncoming || hasDomRows) {
+      if (wrap && wrap.querySelector(".grid-row")) {
+        state.lastActiveHtml = wrap.innerHTML;
+        state.lastActiveAt = Date.now();
+      }
+      return hasIncoming ? incoming : domRecords;
+    }
+    if (wrap && state.lastActiveHtml && Date.now() - state.lastActiveAt <= ACTIVE_EMPTY_GRACE_MS) {
+      wrap.innerHTML = state.lastActiveHtml;
+      return rowsToRecords("#activeRows", true);
+    }
+    return incoming;
+  }
   async function syncFromServer() {
     if (state.syncing) return;
     state.syncing = true;
@@ -421,15 +441,16 @@ body #firstRows.history-grid .grid-row .history-status.closed { color: #075985 !
       if (!response.ok) return;
       const data = await response.json();
       const active = Array.isArray(data.active) ? data.active : [];
+      const stableActive = stabilizeActiveRows(active);
       const events = Array.isArray(data.events) ? data.events : [];
       const monitor = data.status && data.status.monitor ? data.status.monitor : {};
-      state.cancelCount = active.length || Number(monitor.activeCount || 0) || 0;
+      state.cancelCount = stableActive.length || Number(monitor.activeCount || 0) || 0;
       const refreshed = (data.status && data.status.lastRefreshAt) || data.lastRefreshAt || data.lastReportAt;
       state.lastRefresh = refreshed ? clock(refreshed) : "-";
       const rd = refreshed ? new Date(refreshed) : null;
       state.lastRefreshMs = rd && Number.isFinite(rd.getTime()) ? rd.getTime() : Date.now();
       state.intervalSec = Number((data.config && data.config.intervalSec) || monitor.intervalSec || state.intervalSec || 60);
-      const merged = mergeHistory(loadHistory(), rowsToRecords("#firstRows.history-grid", false), rowsToRecords("#activeRows", true), events.map(normalizeRecord), active.map(item => normalizeRecord({ ...item, kind: "취소중", canclYn: "N", status: "발생" })));
+      const merged = mergeHistory(loadHistory(), rowsToRecords("#firstRows.history-grid", false), rowsToRecords("#activeRows", true), events.map(normalizeRecord), stableActive.map(item => normalizeRecord({ ...item, kind: "취소중", canclYn: "N", status: "발생" })));
       saveHistory(merged);
       renderHistory(merged);
       applyRoomCapacityLabels();
@@ -446,7 +467,7 @@ body #firstRows.history-grid .grid-row .history-status.closed { color: #075985 !
     applyRoomCapacityLabels();
     syncFromServer();
     setInterval(renderSummary, 1000);
-    setInterval(() => { cleanupText(); applyRoomCapacityLabels(); }, 1000);
+    setInterval(() => { cleanupText(); stabilizeActiveRows([]); applyRoomCapacityLabels(); }, 1000);
     setInterval(() => { const merged = mergeHistory(loadHistory(), rowsToRecords("#firstRows.history-grid", false), rowsToRecords("#activeRows", true)); saveHistory(merged); renderHistory(merged); applyRoomCapacityLabels(); }, 2500);
     setInterval(syncFromServer, 10000);
   }
