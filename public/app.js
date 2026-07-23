@@ -11,6 +11,9 @@ const state = {
   lastNonEmptyCanceling: [],
   lastNonEmptyCancelingAt: 0,
   cancelProgressSignature: "",
+  availableSignature: "",
+  eventsSignature: "",
+  detailsSignature: "",
   detectedAt: new Map(),
   rows: [],
   canManage: false
@@ -622,25 +625,35 @@ function renderCancelProgress(rows) {
 function renderAvailable(rows) {
   const filteredRows = filterRows(rows, els.availableFacilityFilter, els.availableCapacityFilter, els.availableRoomFilter);
   els.availableSubText.textContent = `${filteredRows.length}건`;
-  els.availableBody.innerHTML = "";
 
   if (!filteredRows.length) {
-    els.availableBody.innerHTML = `<tr><td colspan="5" class="empty-cell">현재 예약가능 없음</td></tr>`;
+    const emptyHtml = `<tr><td colspan="5" class="empty-cell">현재 예약가능 없음</td></tr>`;
+    if (state.availableSignature !== "empty") {
+      els.availableBody.innerHTML = emptyHtml;
+      state.availableSignature = "empty";
+    }
     return;
   }
 
-  for (const row of filteredRows) {
-    const tr = document.createElement("tr");
-    tr.className = "room-bookable";
-    tr.innerHTML = `
+  const signature = filteredRows.map(row => [
+    row.date,
+    row.facility,
+    roomCapacity(row),
+    roomOnly(row),
+    row.statusName || ""
+  ].join("|")).join("||");
+  if (state.availableSignature === signature) return;
+
+  els.availableBody.innerHTML = filteredRows.map(row => `
+    <tr class="room-bookable">
       <td>${escapeHtml(row.date)}</td>
       <td>${escapeHtml(row.facility)}</td>
       <td>${escapeHtml(roomCapacity(row))}</td>
       <td>${escapeHtml(roomOnly(row))}</td>
       <td><span class="badge bookable">${escapeHtml(row.statusName || "예약 가능")}</span></td>
-    `;
-    els.availableBody.append(tr);
-  }
+    </tr>
+  `).join("");
+  state.availableSignature = signature;
 }
 
 function makeSnapshotEvents(cancelingRows, availableRows) {
@@ -675,18 +688,34 @@ function makeSnapshotEvents(cancelingRows, availableRows) {
 }
 
 function renderEvents(events, cancelingRows, availableRows) {
-  els.eventBody.innerHTML = "";
   const displayEvents = sortEvents(filterEvents(events || []));
 
   if (!displayEvents.length) {
-    els.eventBody.innerHTML = `<tr><td colspan="8" class="empty-cell">최근 이력이 없습니다.</td></tr>`;
+    const emptyHtml = `<tr><td colspan="8" class="empty-cell">최근 이력이 없습니다.</td></tr>`;
+    if (state.eventsSignature !== "empty") {
+      els.eventBody.innerHTML = emptyHtml;
+      state.eventsSignature = "empty";
+    }
     return;
   }
 
-  for (const event of displayEvents.slice(0, 80)) {
+  const visibleEvents = displayEvents.slice(0, 80);
+  const signature = visibleEvents.map(event => [
+    event.receivedAt || event.received_at,
+    event.eventType || event.event_type || "",
+    event.state || "",
+    event.date || event.target_date || "",
+    event.facility || "",
+    roomCapacity(event),
+    roomOnly(event),
+    event.message || ""
+  ].join("|")).join("||");
+  if (state.eventsSignature === signature) return;
+
+  els.eventBody.innerHTML = visibleEvents.map(event => {
     const type = event.eventType || event.event_type || "";
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
+    return `
+      <tr>
       <td>${escapeHtml(formatDateTime(event.receivedAt || event.received_at))}</td>
       <td><span class="type ${escapeHtml(type)}">${escapeHtml(typeLabel(type))}</span></td>
       <td>${escapeHtml(event.state || "-")}</td>
@@ -695,9 +724,10 @@ function renderEvents(events, cancelingRows, availableRows) {
       <td>${escapeHtml(roomCapacity(event))}</td>
       <td>${escapeHtml(roomOnly(event))}</td>
       <td>${escapeHtml(event.message || "")}</td>
+      </tr>
     `;
-    els.eventBody.append(tr);
-  }
+  }).join("");
+  state.eventsSignature = signature;
 }
 
 function renderDetails() {
@@ -706,16 +736,28 @@ function renderDetails() {
     return true;
   }));
 
-  els.resultBody.innerHTML = "";
   if (!rows.length) {
-    els.resultBody.innerHTML = `<tr><td colspan="7" class="empty-cell">조회 결과가 없습니다.</td></tr>`;
+    const emptyHtml = `<tr><td colspan="7" class="empty-cell">조회 결과가 없습니다.</td></tr>`;
+    if (state.detailsSignature !== "empty") {
+      els.resultBody.innerHTML = emptyHtml;
+      state.detailsSignature = "empty";
+    }
     return;
   }
 
-  for (const row of rows) {
-    const tr = document.createElement("tr");
-    tr.className = `room-${statusClass(row)}`;
-    tr.innerHTML = `
+  const signature = rows.map(row => [
+    row.date,
+    row.checkoutDate || "",
+    row.facility,
+    roomCapacity(row),
+    roomOnly(row),
+    row.statusName || "",
+    renderFlags(row)
+  ].join("|")).join("||");
+  if (state.detailsSignature === signature) return;
+
+  els.resultBody.innerHTML = rows.map(row => `
+    <tr class="room-${statusClass(row)}">
       <td>${escapeHtml(row.date)}</td>
       <td>${escapeHtml(row.checkoutDate || "")}</td>
       <td>${escapeHtml(row.facility)}</td>
@@ -723,9 +765,9 @@ function renderDetails() {
       <td>${escapeHtml(roomOnly(row))}</td>
       <td><span class="badge ${escapeHtml(statusClass(row))}">${escapeHtml(row.statusName || "상태 확인 필요")}</span></td>
       <td class="flags">${escapeHtml(renderFlags(row))}</td>
-    `;
-    els.resultBody.append(tr);
-  }
+    </tr>
+  `).join("");
+  state.detailsSignature = signature;
 }
 
 function renderFlags(row) {
