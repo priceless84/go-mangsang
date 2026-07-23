@@ -120,6 +120,12 @@ function formatTime(value) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function formatClock(value = new Date()) {
+  const date = value instanceof Date ? value : parseServerDate(value);
+  if (!date) return "-";
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 function formatDateTime(value) {
   const date = parseServerDate(value);
   if (!date) return value || "-";
@@ -130,6 +136,10 @@ function formatDateTime(value) {
     minute: "2-digit",
     second: "2-digit"
   });
+}
+
+function updateSummaryClock() {
+  els.lastChecked.textContent = formatClock(new Date());
 }
 
 function formatRemaining(expectedAt) {
@@ -365,7 +375,7 @@ function updateOverview() {
   const settings = getSettings();
   els.overviewStart.textContent = settings.startDate || "-";
   els.overviewEnd.textContent = settings.endDate || "-";
-  els.overviewInterval.textContent = String(settings.intervalSec || "-");
+  els.overviewInterval.textContent = settings.intervalSec ? `${settings.intervalSec}초` : "-";
   els.overviewFacilities.textContent = settings.facilities.join(", ") || "-";
   els.overviewPolling.textContent = state.isPolling ? "폴링 중" : "폴링 정지";
 }
@@ -845,9 +855,9 @@ function render(data) {
   state.currentAvailable = availableRows;
   state.currentEvents = serverEvents.length ? serverEvents : state.cancelDetectionHistory;
 
-  els.lastChecked.textContent = data.generatedAt || data.heartbeat?.receivedAt || new Date().toLocaleString();
+  updateSummaryClock();
   els.cancelCount.textContent = cancelingRows.length;
-  els.availableCount.textContent = availableRows.length;
+  els.availableCount.textContent = formatClock(data.generatedAt || data.heartbeat?.receivedAt || new Date());
 
   renderHeartbeat(data);
   syncPanelFilters(cancelingRows, els.cancelFacilityFilter, els.cancelCapacityFilter, els.cancelRoomFilter);
@@ -939,6 +949,7 @@ async function runSafe() {
 }
 
 function updateCountdown() {
+  updateSummaryClock();
   updateRemainingCells();
 
   if (!state.nextAt) {
@@ -1067,7 +1078,6 @@ els.clearCancel.addEventListener("click", () => {
 });
 els.clearAvailable.addEventListener("click", () => {
   state.currentAvailable = [];
-  els.availableCount.textContent = "0";
   syncPanelFilters([], els.availableFacilityFilter, els.availableCapacityFilter, els.availableRoomFilter);
   renderAvailable([]);
 });
@@ -1092,6 +1102,8 @@ state.cancelDetectionHistory = loadCancelDetectionHistory();
 state.currentEvents = state.cancelDetectionHistory;
 setDefaults();
 updateOverview();
+updateSummaryClock();
+setInterval(updateSummaryClock, 1000);
 
 function getNotificationSettings() {
   const sets = [...els.notificationSets.querySelectorAll(".notification-set")].map(set => ({
