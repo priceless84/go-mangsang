@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>망상그곳</title>
-  <link rel="stylesheet" href="./style.css?v=20260715-3">
+  <link rel="stylesheet" href="./style.css?v=20260724-simple">
 </head>
 <body>
   <header class="topbar">
@@ -15,58 +15,44 @@
     </div>
     <div class="topbar-actions">
       <div class="status-pill" id="runState">연결 중</div>
-      <button id="openSettings" class="header-button" hidden>환경설정</button>
-      <button id="openNotifications" class="header-button" hidden>알림설정</button>
+      <button id="openSettings" class="header-button" hidden>설정</button>
+      <button id="openNotifications" class="header-button" hidden>알림</button>
     </div>
   </header>
 
   <main>
-    <section class="query-overview" aria-label="조회 대상 정보">
+    <section class="query-overview" aria-label="조회 설정">
       <div><span>시작일</span><strong id="overviewStart">-</strong></div>
       <div><span>종료일</span><strong id="overviewEnd">-</strong></div>
-      <div><span>폴링 간격(초)</span><strong id="overviewInterval">-</strong></div>
-      <div><span>조회 시설</span><strong id="overviewFacilities">-</strong></div>
-      <div><span>폴링 상태</span><strong id="overviewPolling">폴링 정지</strong></div>
+      <div><span>갱신주기</span><strong id="overviewInterval">-</strong></div>
+      <div><span>감시시설</span><strong id="overviewFacilities">-</strong></div>
+      <div><span>상태</span><strong id="overviewPolling">정지</strong></div>
     </section>
 
-    <div class="loading-bar" id="loadingBar" aria-hidden="true">
-      <span></span>
-    </div>
-
-    <section class="summary" aria-label="요약">
-      <div>
-        <span>마지막 조회</span>
-        <strong id="lastChecked">-</strong>
-      </div>
-      <div>
-        <span>현재 취소진행중</span>
-        <strong id="cancelCount">0</strong>
-      </div>
-      <div>
-        <span>현재 예약가능</span>
-        <strong id="availableCount">0</strong>
-      </div>
-      <div>
-        <span>다음 조회</span>
-        <strong id="nextTick">-</strong>
-      </div>
+    <section class="summary" aria-label="현재 상태">
+      <div><span>현재시간</span><strong id="lastChecked">-</strong></div>
+      <div><span>취소</span><strong id="cancelCount">0</strong></div>
+      <div><span>예약가능</span><strong id="availableCount">0</strong></div>
+      <div><span>갱신주기</span><strong id="nextTick">-</strong></div>
     </section>
+
+    <div class="loading-bar" id="loadingBar" aria-hidden="true"><span></span></div>
 
     <section class="watch-strip" aria-label="감시 상태">
-      <span><strong>상태</strong> <b class="state-badge" id="heartbeatStatus">대기</b></span>
-      <span><strong>감시 이름</strong> <em id="heartbeatClient">-</em></span>
-      <span><strong>감시 날짜</strong> <em id="heartbeatRange">-</em></span>
-      <span><strong>시설</strong> <em id="heartbeatFacilities">-</em></span>
+      <span><strong>감시</strong> <b class="state-badge" id="heartbeatStatus">대기</b></span>
+      <span><strong>대상</strong> <em id="heartbeatFacilities">-</em></span>
+      <span><strong>기간</strong> <em id="heartbeatRange">-</em></span>
       <span><strong>메시지</strong> <em id="heartbeatMessage">-</em></span>
-      <span class="hidden-watch-item"><strong>마지막</strong> <em id="heartbeatAt">-</em></span>
+      <span class="hidden-watch-item"><strong>이름</strong> <em id="heartbeatClient">-</em></span>
+      <span class="hidden-watch-item"><strong>수신</strong> <em id="heartbeatAt">-</em></span>
     </section>
 
     <section class="dashboard">
       <article class="panel list-panel">
         <div class="panel-head">
-          <h2>현재 취소진행중 <span id="cancelSubText" class="title-count">0건</span></h2>
+          <h2>취소 진행 <span id="cancelSubText" class="title-count">0건</span></h2>
           <div class="panel-actions">
-            <label class="panel-filter">시설<select id="cancelFacilityFilter"><option value="">전체 시설</option></select></label>
+            <label class="panel-filter">시설<select id="cancelFacilityFilter"><option value="">전체</option></select></label>
             <label class="panel-filter">인원<select id="cancelCapacityFilter"><option value="">전체</option></select></label>
             <label class="panel-filter">객실<select id="cancelRoomFilter"><option value="">전체</option></select></label>
             <button id="clearCancel">초기화</button>
@@ -86,7 +72,7 @@
               </tr>
             </thead>
             <tbody id="cancelBody">
-              <tr><td colspan="7" class="empty-cell">현재 취소진행중 없음</td></tr>
+              <tr><td colspan="7" class="empty-cell">현재 취소 진행 없음</td></tr>
             </tbody>
           </table>
         </div>
@@ -94,9 +80,9 @@
 
       <article class="panel list-panel">
         <div class="panel-head">
-          <h2>현재 예약가능 <span id="availableSubText" class="title-count">0건</span></h2>
+          <h2>예약 가능 <span id="availableSubText" class="title-count">0건</span></h2>
           <div class="panel-actions">
-            <label class="panel-filter">시설<select id="availableFacilityFilter"><option value="">전체 시설</option></select></label>
+            <label class="panel-filter">시설<select id="availableFacilityFilter"><option value="">전체</option></select></label>
             <label class="panel-filter">인원<select id="availableCapacityFilter"><option value="">전체</option></select></label>
             <label class="panel-filter">객실<select id="availableRoomFilter"><option value="">전체</option></select></label>
             <button id="clearAvailable">초기화</button>
@@ -114,7 +100,7 @@
               </tr>
             </thead>
             <tbody id="availableBody">
-              <tr><td colspan="5" class="empty-cell">현재 예약가능 없음</td></tr>
+              <tr><td colspan="5" class="empty-cell">현재 예약 가능 없음</td></tr>
             </tbody>
           </table>
         </div>
@@ -123,13 +109,12 @@
 
     <section class="panel detail-panel">
       <div class="panel-head detail-panel-head">
-        <h2>최근 이력</h2>
+        <h2>감지기록 누적</h2>
         <div class="panel-actions">
-          <label class="panel-filter">
-            정렬
+          <label class="panel-filter">정렬
             <select id="eventSort">
-              <option value="timeDesc">시간 최신순</option>
-              <option value="timeAsc">시간 오래된순</option>
+              <option value="timeDesc">최근 감지순</option>
+              <option value="timeAsc">오래된 감지순</option>
               <option value="dateAsc">날짜 빠른순</option>
               <option value="dateDesc">날짜 늦은순</option>
               <option value="facilityAsc">시설순</option>
@@ -137,18 +122,8 @@
               <option value="typeAsc">종류순</option>
             </select>
           </label>
-          <label class="panel-filter">
-            종류
-            <select id="eventTypeFilter">
-              <option value="">전체 종류</option>
-            </select>
-          </label>
-          <label class="panel-filter">
-            시설
-            <select id="eventFacilityFilter">
-              <option value="">전체 시설</option>
-            </select>
-          </label>
+          <label class="panel-filter">종류<select id="eventTypeFilter"><option value="">전체</option></select></label>
+          <label class="panel-filter">시설<select id="eventFacilityFilter"><option value="">전체</option></select></label>
           <label class="panel-filter">인원<select id="eventCapacityFilter"><option value="">전체</option></select></label>
           <label class="panel-filter">객실<select id="eventRoomFilter"><option value="">전체</option></select></label>
           <button id="clearLog">초기화</button>
@@ -169,18 +144,18 @@
             </tr>
           </thead>
           <tbody id="eventBody">
-            <tr><td colspan="8" class="empty-cell">최근 이력이 없습니다.</td></tr>
+            <tr><td colspan="8" class="empty-cell">감지 기록이 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-head">
-        <h2>객실별 전체 상태</h2>
+    <details class="panel secondary-panel">
+      <summary>객실별 전체 상태</summary>
+      <div class="panel-head detail-panel-head">
+        <h2>전체 상태</h2>
         <div class="panel-actions">
-          <label class="panel-filter">
-            정렬
+          <label class="panel-filter">정렬
             <select id="detailSort">
               <option value="dateAsc">체크인 빠른순</option>
               <option value="dateDesc">체크인 늦은순</option>
@@ -189,18 +164,8 @@
               <option value="statusAsc">상태순</option>
             </select>
           </label>
-          <label class="panel-filter">
-            시설
-            <select id="detailFacilityFilter">
-              <option value="">전체 시설</option>
-            </select>
-          </label>
-          <label class="panel-filter">
-            상태
-            <select id="detailStatusFilter">
-              <option value="">전체 상태</option>
-            </select>
-          </label>
+          <label class="panel-filter">시설<select id="detailFacilityFilter"><option value="">전체</option></select></label>
+          <label class="panel-filter">상태<select id="detailStatusFilter"><option value="">전체</option></select></label>
           <label class="panel-filter">인원<select id="detailCapacityFilter"><option value="">전체</option></select></label>
           <label class="panel-filter">객실<select id="detailRoomFilter"><option value="">전체</option></select></label>
           <button id="clearDetails">초기화</button>
@@ -214,9 +179,9 @@
               <th>체크아웃</th>
               <th>시설</th>
               <th>인원</th>
-              <th>객실/사이트</th>
+              <th>객실</th>
               <th>상태</th>
-              <th>플래그</th>
+              <th>신호</th>
             </tr>
           </thead>
           <tbody id="resultBody">
@@ -224,18 +189,18 @@
           </tbody>
         </table>
       </div>
-    </section>
+    </details>
   </main>
 
   <div class="modal-layer" id="settingsModal" hidden>
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-      <div class="modal-head"><h2 id="settingsTitle">환경설정</h2><button type="button" class="modal-close" data-close-modal="settingsModal" aria-label="닫기">×</button></div>
+      <div class="modal-head"><h2 id="settingsTitle">설정</h2><button type="button" class="modal-close" data-close-modal="settingsModal" aria-label="닫기">x</button></div>
       <div class="controls modal-controls" aria-label="조회 설정">
         <label>시작일<input id="startDate" type="date"></label>
         <label>종료일<input id="endDate" type="date"></label>
-        <label>폴링 간격(초)<input id="intervalSec" type="number" min="20" step="5" value="60"></label>
-        <label class="wide-field">캠핑코리아 로그인 Cookie<textarea id="sessionCookie" rows="3" placeholder="예: JSESSIONID=...; ..."></textarea></label>
-        <fieldset><legend>조회 시설</legend>
+        <label>갱신 간격(초)<input id="intervalSec" type="number" min="20" step="5" value="60"></label>
+        <label class="wide-field">로그인 Cookie<textarea id="sessionCookie" rows="3" placeholder="예: JSESSIONID=...; ..."></textarea></label>
+        <fieldset><legend>감시 시설</legend>
           <label><input type="checkbox" name="facility" value="든바다" checked> 든바다</label>
           <label><input type="checkbox" name="facility" value="난바다" checked> 난바다</label>
           <label><input type="checkbox" name="facility" value="허허바다" checked> 허허바다</label>
@@ -244,7 +209,7 @@
       </div>
       <div class="modal-footer">
         <button id="runOnce">한 번 조회</button>
-        <button id="startPoll" class="primary">폴링 시작</button>
+        <button id="startPoll" class="primary">감시 시작</button>
         <button id="stopPoll" disabled>중지</button>
         <button type="button" data-close-modal="settingsModal">닫기</button>
       </div>
@@ -253,18 +218,18 @@
 
   <div class="modal-layer" id="notificationModal" hidden>
     <section class="modal-card notification-modal-card" role="dialog" aria-modal="true" aria-labelledby="notificationTitle">
-      <div class="modal-head"><h2 id="notificationTitle">알림설정</h2><button type="button" class="modal-close" data-close-modal="notificationModal" aria-label="닫기">×</button></div>
+      <div class="modal-head"><h2 id="notificationTitle">알림 설정</h2><button type="button" class="modal-close" data-close-modal="notificationModal" aria-label="닫기">x</button></div>
       <div id="notificationSets" class="notification-sets"></div>
-      <button id="addNotificationSet" type="button">알림조건 추가</button>
+      <button id="addNotificationSet" type="button">알림 조건 추가</button>
       <div class="modal-footer notification-footer">
         <label class="notification-toggle">
           <input id="notifyEnabled" type="checkbox">
           <span class="toggle-track" aria-hidden="true"><span></span></span>
           <strong>메일 알림 사용</strong>
         </label>
-        <button id="saveNotify" class="primary">알림 설정 저장</button>
-        <button id="testMail">테스트 메일 발송</button>
-        <span id="notifyMessage" class="inline-message">SMTP 계정은 서버의 data/smtp.local.json에서 관리합니다.</span>
+        <button id="saveNotify" class="primary">저장</button>
+        <button id="testMail">테스트 메일</button>
+        <span id="notifyMessage" class="inline-message">SMTP 계정은 서버에서 관리합니다.</span>
         <button type="button" data-close-modal="notificationModal">닫기</button>
       </div>
     </section>
