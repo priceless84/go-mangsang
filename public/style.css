@@ -126,6 +126,7 @@ main {
   display: grid;
   grid-template-columns: 0.8fr 0.8fr 0.7fr 1.6fr 0.7fr;
   gap: 0;
+  margin-top: 10px;
   overflow: hidden;
 }
 
@@ -166,7 +167,7 @@ main {
 .summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: 10px;
+  margin-top: 0;
   overflow: hidden;
 }
 
@@ -176,6 +177,10 @@ main {
 
 .summary strong {
   font-size: 21px;
+}
+
+.summary > div:nth-child(2) strong {
+  color: var(--danger);
 }
 
 .loading-bar {
@@ -796,7 +801,7 @@ body.modal-open {
 
   .topbar {
     align-items: flex-start;
-    padding: 12px;
+    padding: 10px 12px;
   }
 
   .topbar h1 {
@@ -825,11 +830,11 @@ body.modal-open {
   }
 
   .summary strong {
-    font-size: 19px;
+    font-size: 18px;
   }
 
   .watch-strip {
-    grid-template-columns: minmax(0, 1fr);
+    display: none;
   }
 
   .panel-head {
@@ -865,8 +870,8 @@ body.modal-open {
 
   th,
   td {
-    padding: 9px 4px;
-    font-size: 13px;
+    padding: 8px 4px;
+    font-size: 12px;
   }
 
   .cancel-scroll th:nth-child(2),
