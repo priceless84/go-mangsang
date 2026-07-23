@@ -377,7 +377,7 @@ function updateOverview() {
   els.overviewEnd.textContent = settings.endDate || "-";
   els.overviewInterval.textContent = settings.intervalSec ? `${settings.intervalSec}초` : "-";
   els.overviewFacilities.textContent = settings.facilities.join(", ") || "-";
-  els.overviewPolling.textContent = state.isPolling ? "폴링 중" : "폴링 정지";
+  els.overviewPolling.textContent = "감시 진행";
 }
 
 function openModal(modal) {
@@ -925,7 +925,7 @@ async function fetchStatus() {
       throw new Error(data.message || "조회 실패");
     }
     render(data);
-    setRunState(state.isPolling ? "폴링 중" : "대기 중");
+    setRunState("감시 진행");
     return true;
   } finally {
     state.isFetching = false;
@@ -971,7 +971,7 @@ function stopPolling() {
   els.startPoll.disabled = false;
   els.stopPoll.disabled = true;
   els.runOnce.disabled = false;
-  setRunState("대기 중");
+  setRunState("감시 정지");
   updateCountdown();
   updateOverview();
 }
@@ -1005,7 +1005,7 @@ async function startPolling() {
   els.startPoll.disabled = true;
   els.stopPoll.disabled = false;
   els.runOnce.disabled = true;
-  setRunState("폴링 중");
+  setRunState("감시 진행");
   updateOverview();
 
   saveSettings();
@@ -1230,7 +1230,7 @@ async function loadServerStatus() {
   els.startPoll.disabled = state.isPolling;
   els.stopPoll.disabled = !state.isPolling;
   els.runOnce.disabled = state.isPolling || state.isFetching;
-  setRunState(state.isPolling ? "폴링 중" : "대기 중");
+  setRunState("감시 진행");
   updateOverview();
   if (state.isPolling && !state.countdownTimer) {
     state.countdownTimer = setInterval(updateCountdown, 1000);
@@ -1259,7 +1259,7 @@ function connectStream() {
       els.startPoll.disabled = state.isPolling;
       els.stopPoll.disabled = !state.isPolling;
       els.runOnce.disabled = state.isPolling || state.isFetching;
-      setRunState(state.isPolling ? "폴링 중" : "대기 중");
+      setRunState("감시 진행");
       updateCountdown();
       updateOverview();
     }
