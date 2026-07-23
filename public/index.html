@@ -21,19 +21,19 @@
   </header>
 
   <main>
+    <section class="summary" aria-label="현재 상태">
+      <div><span>현재시간</span><strong id="lastChecked">-</strong></div>
+      <div><span>취소건</span><strong id="cancelCount">0</strong></div>
+      <div><span>갱신시간</span><strong id="availableCount">-</strong></div>
+      <div><span>갱신주기</span><strong id="nextTick">-</strong></div>
+    </section>
+
     <section class="query-overview" aria-label="조회 설정">
       <div><span>시작일</span><strong id="overviewStart">-</strong></div>
       <div><span>종료일</span><strong id="overviewEnd">-</strong></div>
       <div><span>갱신주기</span><strong id="overviewInterval">-</strong></div>
       <div><span>감시시설</span><strong id="overviewFacilities">-</strong></div>
       <div><span>상태</span><strong id="overviewPolling">정지</strong></div>
-    </section>
-
-    <section class="summary" aria-label="현재 상태">
-      <div><span>현재시간</span><strong id="lastChecked">-</strong></div>
-      <div><span>취소</span><strong id="cancelCount">0</strong></div>
-      <div><span>예약가능</span><strong id="availableCount">0</strong></div>
-      <div><span>갱신주기</span><strong id="nextTick">-</strong></div>
     </section>
 
     <div class="loading-bar" id="loadingBar" aria-hidden="true"><span></span></div>
