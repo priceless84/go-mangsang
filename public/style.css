@@ -816,11 +816,20 @@ body.modal-open {
     padding: 8px;
   }
 
+  .summary,
+  .query-overview,
+  .panel {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
   .query-overview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .query-overview > div:nth-child(4) {
+  .query-overview > div:nth-child(4),
+  .query-overview > div:nth-child(5) {
     grid-column: 1 / -1;
   }
 
@@ -828,9 +837,22 @@ body.modal-open {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .summary > div,
+  .query-overview > div {
+    display: grid;
+    align-content: center;
+    min-height: 58px;
+    text-align: center;
+  }
+
   .summary > div:nth-child(2n),
   .query-overview > div:nth-child(2n) {
     border-right: 0;
+  }
+
+  .summary > div:nth-child(n + 3),
+  .query-overview > div:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
   }
 
   .summary strong {
@@ -854,7 +876,7 @@ body.modal-open {
 
   .panel-actions {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
     gap: 6px;
   }
@@ -863,6 +885,7 @@ body.modal-open {
     display: grid;
     grid-template-columns: 1fr;
     gap: 3px;
+    min-width: 0;
   }
 
   .panel-filter select,
@@ -870,6 +893,7 @@ body.modal-open {
   #detailSort,
   .panel-actions button {
     width: 100%;
+    min-width: 0;
   }
 
   th,
@@ -932,16 +956,13 @@ body.modal-open {
 
   .query-overview > div,
   .summary > div {
-    padding: 8px 7px;
+    min-height: 54px;
+    padding: 7px 8px;
   }
 
   .query-overview strong,
   .summary strong {
     font-size: 16px;
-  }
-
-  .panel-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   th,
