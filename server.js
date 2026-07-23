@@ -373,12 +373,14 @@ body #firstRows.history-grid .grid-row .history-status.closed { color: #075985 !
     Array.from(document.querySelectorAll("#activeRows .grid-row")).forEach(row => {
       const c = row.children;
       if (!c || c.length < 3) return;
-      c[2].textContent = roomWithCapacity(c[2].textContent, { facility: c[1].textContent, category: c[1].textContent, room: c[2].textContent });
+      const next = roomWithCapacity(c[2].textContent, { facility: c[1].textContent, category: c[1].textContent, room: c[2].textContent });
+      if (c[2].textContent !== next) c[2].textContent = next;
     });
     Array.from(document.querySelectorAll("#firstRows.history-grid .grid-row")).forEach(row => {
       const c = row.children;
       if (!c || c.length < 6) return;
-      c[5].textContent = roomWithCapacity(c[5].textContent, { facility: c[4].textContent, category: c[4].textContent, room: c[5].textContent });
+      const next = roomWithCapacity(c[5].textContent, { facility: c[4].textContent, category: c[4].textContent, room: c[5].textContent });
+      if (c[5].textContent !== next) c[5].textContent = next;
     });
   }
   function ensureSummary() {
