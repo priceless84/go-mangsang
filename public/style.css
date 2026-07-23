@@ -122,6 +122,10 @@ main {
   box-shadow: var(--shadow);
 }
 
+#codexLiveSummary {
+  display: none !important;
+}
+
 .query-overview {
   display: grid;
   grid-template-columns: 0.8fr 0.8fr 0.7fr 1.6fr 0.7fr;
