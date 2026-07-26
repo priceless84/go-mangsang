@@ -5,24 +5,14 @@ const { readFile } = require("fs/promises");
 const { extname, join, normalize } = require("path");
 
 const PORT = Number(process.env.PORT || 3000);
-const SOURCE_ORIGIN = process.env.SOURCE_ORIGIN || "http://112.217.206.107:8788";
 const PUBLIC_DIR = join(process.cwd(), "public");
-const REPORT_TTL_MS = 2 * 60 * 1000;
-const EVENT_LIMIT = 300;
-
-let latestReport = null;
-const reportEvents = [];
+const REFERENCE_URL = process.env.REFERENCE_URL || "https://mangsang-alarm-dashboard.onrender.com/";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".ico": "image/x-icon"
+  ".json": "application/json; charset=utf-8"
 };
 
 function send(res, statusCode, body, headers = {}) {
@@ -33,184 +23,44 @@ function send(res, statusCode, body, headers = {}) {
 function json(res, statusCode, payload) {
   send(res, statusCode, JSON.stringify(payload), {
     "content-type": "application/json; charset=utf-8",
-    "cache-control": "no-store",
-    "access-control-allow-origin": "*"
+    "cache-control": "no-store"
   });
 }
 
-function cors(res) {
-  send(res, 204, "", {
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "content-type",
-    "access-control-max-age": "86400"
+function decodeEntities(value) {
+  return String(value || "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'");
+}
+
+function htmlToText(html) {
+  return decodeEntities(String(html || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<\/(td|th)>/gi, "\t")
+    .replace(/<\/tr>/gi, "\n")
+    .replace(/<\/(p|div|section|article|header|main|h1|h2|h3|summary|li)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim());
+}
+
+async function referenceStatus(res) {
+  const upstream = await fetch(`${REFERENCE_URL}?proxy=${Date.now()}`, { cache: "no-store" });
+  const html = await upstream.text();
+  json(res, upstream.ok ? 200 : upstream.status, {
+    ok: upstream.ok,
+    fetchedAt: new Date().toISOString(),
+    source: REFERENCE_URL,
+    text: htmlToText(html)
   });
-}
-
-function readJsonBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = "";
-    req.on("data", chunk => {
-      body += chunk;
-      if (body.length > 1024 * 1024) {
-        reject(new Error("Body too large"));
-        req.destroy();
-      }
-    });
-    req.on("end", () => {
-      try {
-        resolve(body ? JSON.parse(body) : {});
-      } catch {
-        reject(new Error("Invalid JSON"));
-      }
-    });
-    req.on("error", reject);
-  });
-}
-
-function rowKey(row) {
-  return [
-    row.date || row.target_date || "",
-    row.facility || row.category || "",
-    row.roomCode || row.room_code || row.room || row.roomName || row.room_name || ""
-  ].join("|");
-}
-
-function normalizeRows(rows) {
-  if (!Array.isArray(rows)) return [];
-  return rows.map(row => {
-    const now = new Date().toISOString();
-    const room = row.room || row.roomName || row.room_name || row.roomCode || "";
-    const facility = row.facility || row.category || "";
-    const date = row.date || row.target_date || "";
-    return {
-      ...row,
-      date,
-      target_date: row.target_date || date,
-      facility,
-      category: row.category || facility,
-      room,
-      roomName: row.roomName || row.room_name || room,
-      room_name: row.room_name || row.roomName || room,
-      capacity: row.capacity ? String(row.capacity) : "",
-      canclYn: row.canclYn || "N",
-      eventType: row.eventType || row.event_type || "canceling",
-      event_type: row.event_type || row.eventType || "canceling",
-      statusName: row.statusName || row.statusText || "취소 진행중",
-      statusText: row.statusText || row.statusName || "취소 진행중",
-      statusCode: row.statusCode || "cancelBlocked",
-      state: row.state || "발생",
-      receivedAt: row.receivedAt || row.received_at || row.detectedAt || now,
-      detectedAt: row.detectedAt || row.receivedAt || row.received_at || now
-    };
-  });
-}
-
-function rememberEvents(events) {
-  const seen = new Set(reportEvents.map(rowKey));
-  for (const event of normalizeRows(events)) {
-    const key = rowKey(event);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    reportEvents.unshift(event);
-  }
-  reportEvents.splice(EVENT_LIMIT);
-}
-
-function splitRange(value) {
-  const [start = "", end = ""] = String(value || "").split("~").map(item => item.trim());
-  return { start, end };
-}
-
-function reportPayload() {
-  if (!latestReport) return null;
-
-  const range = splitRange(latestReport.range);
-  const isFresh = Date.now() - latestReport.receivedAtMs <= REPORT_TTL_MS;
-  const active = isFresh ? latestReport.active : [];
-  const start = latestReport.start || range.start;
-  const end = latestReport.end || range.end;
-
-  return {
-    ok: true,
-    generatedAt: new Date().toISOString(),
-    source: latestReport.source || "reservation-console",
-    start,
-    end,
-    facilities: latestReport.facilities || "",
-    intervalSec: latestReport.intervalSec || 5,
-    heartbeat: {
-      status: "running",
-      receivedAt: latestReport.receivedAt,
-      client: latestReport.source || "reservation-console",
-      start,
-      end,
-      facilities: latestReport.facilities || "",
-      message: isFresh ? "감시 진행" : "최근 감시 신호 대기"
-    },
-    rows: active,
-    visibleRows: active,
-    currentCanceling: active,
-    currentAvailable: [],
-    events: reportEvents,
-    report: {
-      count: latestReport.count || 0,
-      totalRequests: latestReport.totalRequests || 0,
-      failures: latestReport.failures || 0,
-      stale: !isFresh
-    }
-  };
-}
-
-function mergeStatus(upstreamPayload) {
-  const report = reportPayload();
-  if (!report) return upstreamPayload;
-
-  if (report.currentCanceling.length || !upstreamPayload || upstreamPayload.ok === false) {
-    return {
-      ...(upstreamPayload || {}),
-      ...report
-    };
-  }
-
-  return {
-    ...upstreamPayload,
-    heartbeat: report.heartbeat,
-    events: report.events.length ? report.events : upstreamPayload.events,
-    report: report.report
-  };
-}
-
-async function acceptReport(req, res) {
-  const payload = await readJsonBody(req);
-  const active = normalizeRows(payload.active || payload.currentCanceling || []);
-  const events = normalizeRows(payload.events || []);
-  rememberEvents([...active, ...events]);
-
-  latestReport = {
-    ...payload,
-    active,
-    events,
-    receivedAt: new Date().toISOString(),
-    receivedAtMs: Date.now()
-  };
-
-  json(res, 200, { ok: true, currentCanceling: active.length, events: reportEvents.length });
-}
-
-async function proxyStatus(res) {
-  try {
-    const upstream = await fetch(new URL("/api/status", SOURCE_ORIGIN), { cache: "no-store" });
-    const payload = await upstream.json();
-    json(res, upstream.status, mergeStatus(payload));
-  } catch (error) {
-    const report = reportPayload();
-    if (report) {
-      json(res, 200, report);
-      return;
-    }
-    throw error;
-  }
 }
 
 async function serveStatic(req, res) {
@@ -228,7 +78,7 @@ async function serveStatic(req, res) {
     const body = await readFile(filePath);
     send(res, 200, body, {
       "content-type": mimeTypes[extname(filePath)] || "application/octet-stream",
-      "cache-control": filePath.endsWith("index.html") ? "no-store" : "public, max-age=300"
+      "cache-control": filePath.endsWith("index.html") ? "no-store" : "public, max-age=120"
     });
   } catch {
     const body = await readFile(join(PUBLIC_DIR, "index.html"));
@@ -242,17 +92,8 @@ async function serveStatic(req, res) {
 createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", "http://localhost");
-
-    if (req.method === "OPTIONS") {
-      cors(res);
-      return;
-    }
-    if (req.method === "GET" && url.pathname === "/api/status") {
-      await proxyStatus(res);
-      return;
-    }
-    if (req.method === "POST" && url.pathname === "/api/report") {
-      await acceptReport(req, res);
+    if (req.method === "GET" && url.pathname === "/api/reference") {
+      await referenceStatus(res);
       return;
     }
     if (url.pathname.startsWith("/api/")) {
@@ -263,7 +104,7 @@ createServer(async (req, res) => {
   } catch (error) {
     json(res, 502, {
       ok: false,
-      message: error instanceof Error ? error.message : "참조 서버 연결 실패"
+      message: error instanceof Error ? error.message : "참조 대시보드 연결 실패"
     });
   }
 }).listen(PORT, () => {
