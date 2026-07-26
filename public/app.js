@@ -121,6 +121,88 @@ function parseDashboard(text) {
   };
 }
 
+function statusLabel(heartbeat) {
+  if (!heartbeat || !heartbeat.received_at) return "신호 없음";
+  const ageSec = (Date.now() - new Date(heartbeat.received_at).getTime()) / 1000;
+  if (heartbeat.status === "login_required") return "로그인 필요";
+  if (heartbeat.status === "stopped" || heartbeat.status === "ended") return "중지됨";
+  if (ageSec <= 300) return "감시 중";
+  if (ageSec <= 900) return "지연";
+  return "중지됨";
+}
+
+function localTime(value) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("ko-KR", { hour12: false });
+}
+
+function shortTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function remainText(value) {
+  if (!value) return "-";
+  const end = new Date(value);
+  const diff = end.getTime() - Date.now();
+  if (!Number.isFinite(diff) || diff <= 0) return "만료";
+  const totalMinutes = Math.ceil(diff / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+}
+
+function dateSummary(dates) {
+  if (!Array.isArray(dates) || !dates.length) return "-";
+  const sorted = [...dates].sort();
+  if (sorted.length === 1) return sorted[0];
+  return `${sorted[0]} ~ ${sorted[sorted.length - 1]} (${sorted.length}일)`;
+}
+
+function parseStatePayload(payload) {
+  const hb = payload?.state?.heartbeat || payload?.heartbeat || null;
+  const stateData = payload?.state || payload || {};
+  const canceling = (hb?.canceling_items || []).map(item => {
+    const detected = item.detected_at ? new Date(item.detected_at) : null;
+    const expected = detected ? new Date(detected.getTime() + 2 * 60 * 60 * 1000) : null;
+    return {
+      date: item.target_date || "",
+      facility: item.facility || "",
+      room: item.room || "",
+      detected: shortTime(detected),
+      expected: shortTime(expected),
+      remaining: remainText(expected),
+      status: "발생"
+    };
+  });
+  const available = (hb?.available_items || []).map(item => ({
+    date: item.target_date || "",
+    facility: item.facility || "",
+    room: item.room || "",
+    status: "발생"
+  }));
+  const history = (stateData.events || []).slice().reverse().slice(0, 80).map(event => ({
+    time: localTime(event.received_at),
+    type: event.event_type === "canceling" ? "취소진행중" : "예약가능",
+    status: event.state || "",
+    date: event.target_date || "",
+    facility: event.facility || "",
+    room: event.room || ""
+  }));
+
+  return {
+    watchState: statusLabel(hb),
+    last: localTime(hb?.received_at),
+    range: dateSummary(hb?.target_dates),
+    facilities: Array.isArray(hb?.facilities) ? hb.facilities.join(", ") : "-",
+    canceling,
+    available,
+    history
+  };
+}
+
 function facilityMatch(row) {
   return state.selectedFacilities.has(row.facility);
 }
@@ -217,8 +299,8 @@ async function refresh() {
   try {
     const response = await fetch(`/api/reference?ts=${Date.now()}`, { cache: "no-store" });
     const payload = await response.json();
-    if (!payload.ok && !payload.text) throw new Error(payload.message || "조회 실패");
-    render(parseDashboard(payload.text || ""));
+    if (!payload.ok && !payload.text && !payload.state) throw new Error(payload.message || "조회 실패");
+    render(payload.state ? parseStatePayload(payload) : parseDashboard(payload.text || ""));
   } catch (error) {
     els.watchState.textContent = "연결 확인 필요";
   }
