@@ -1,8 +1,7 @@
 {
-  "name": "mangsang-alarm-dashboard",
+  "name": "go-mangsang-dashboard",
   "version": "1.0.0",
   "private": true,
-  "description": "Console collector + web dashboard for Mangsang cancellation monitoring",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
