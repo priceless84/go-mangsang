@@ -56,58 +56,67 @@ function parseTableRows(lines) {
     .map(line => line.split("\t").map(cell => normalizeLine(cell)).filter(Boolean));
 }
 
-function parseDashboard(text) {
-  const lines = String(text || "")
-    .split(/\n+/)
-    .map(normalizeLine)
-    .filter(Boolean);
-  const tabRows = parseTableRows(String(text || "").split(/\n+/));
-  const history = [];
+function sectionLines(lines, startLabel, endLabel) {
+  const start = lines.findIndex(line => normalizeLine(line) === startLabel);
+  if (start < 0) return [];
+  const end = lines.findIndex((line, index) => index > start && normalizeLine(line).startsWith(endLabel));
+  return lines.slice(start + 1, end > start ? end : undefined);
+}
 
-  for (const row of tabRows) {
-    if (row[0] === "시간" || row.length < 6) continue;
-    history.push({
+function parseCancelingSection(lines) {
+  return parseTableRows(sectionLines(lines, "현재 취소진행중", "현재 예약가능"))
+    .filter(row => row[0] !== "날짜" && row.length >= 3)
+    .map(row => ({
+      date: row[0],
+      facility: row[1],
+      room: row[2],
+      detected: row[3] || "-",
+      expected: row[4] || "-",
+      remaining: row[5] || "-",
+      status: "발생"
+    }));
+}
+
+function parseAvailableSection(lines) {
+  return parseTableRows(sectionLines(lines, "현재 예약가능", "최근 이력"))
+    .filter(row => row[0] !== "날짜" && row.length >= 3)
+    .map(row => ({
+      date: row[0],
+      facility: row[1],
+      room: row[2],
+      status: row[3] || "발생"
+    }));
+}
+
+function parseHistorySection(lines) {
+  return parseTableRows(sectionLines(lines, "최근 이력", "__END__"))
+    .filter(row => row[0] !== "시간" && row.length >= 6)
+    .map(row => ({
       time: row[0],
       type: row[1],
       status: row[2],
       date: row[3],
       facility: row[4],
       room: row[5]
-    });
-  }
-
-  const liveCancel = history
-    .filter(row => row.type === "취소진행중" && row.status === "발생")
-    .filter(row => !history.some(next => {
-      return next !== row
-        && next.type === row.type
-        && next.date === row.date
-        && next.facility === row.facility
-        && next.room === row.room
-        && next.status.startsWith("종료");
     }));
+}
 
-  const liveAvailable = history
-    .filter(row => row.type === "예약가능" && row.status === "발생")
-    .filter(row => !history.some(next => {
-      return next !== row
-        && next.type === row.type
-        && next.date === row.date
-        && next.facility === row.facility
-        && next.room === row.room
-        && next.status.startsWith("종료");
-    }));
+function parseDashboard(text) {
+  const rawLines = String(text || "").split(/\n+/);
+  const lines = rawLines.map(normalizeLine).filter(Boolean);
+  const history = parseHistorySection(rawLines);
+  const watchState = valueAfter(lines, "감시 상태");
 
   return {
-    watchState: valueAfter(lines, "감시 상태"),
+    watchState: watchState.includes("감시") ? watchState : "감시 중",
     last: valueAfter(lines, "마지막"),
     name: valueAfter(lines, "감시 이름"),
     range: valueAfter(lines, "감시 날짜"),
     facilities: valueAfter(lines, "시설"),
     cancelCount: countFromText(text, "취소진행중"),
     availableCount: countFromText(text, "예약가능"),
-    canceling: liveCancel,
-    available: liveAvailable,
+    canceling: parseCancelingSection(rawLines),
+    available: parseAvailableSection(rawLines),
     history
   };
 }
@@ -129,13 +138,32 @@ function emptyRow(colspan, text) {
   return `<tr><td class="empty" colspan="${colspan}">${text}</td></tr>`;
 }
 
-function renderSimpleRows(rows, body, emptyText) {
+function renderCancelRows(rows) {
   const filtered = rows.filter(facilityMatch);
   if (!filtered.length) {
-    body.innerHTML = emptyRow(4, emptyText);
+    els.cancelBody.innerHTML = emptyRow(6, "현재 취소진행중 없음");
     return 0;
   }
-  body.innerHTML = filtered.map(row => `
+  els.cancelBody.innerHTML = filtered.map(row => `
+    <tr>
+      <td>${row.date}</td>
+      <td>${row.facility}</td>
+      <td>${row.room}</td>
+      <td>${row.detected || "-"}</td>
+      <td>${row.expected || "-"}</td>
+      <td class="type-cancel">${row.remaining || "-"}</td>
+    </tr>
+  `).join("");
+  return filtered.length;
+}
+
+function renderAvailableRows(rows) {
+  const filtered = rows.filter(facilityMatch);
+  if (!filtered.length) {
+    els.availableBody.innerHTML = emptyRow(4, "현재 예약가능 없음");
+    return 0;
+  }
+  els.availableBody.innerHTML = filtered.map(row => `
     <tr>
       <td>${row.date}</td>
       <td>${row.facility}</td>
@@ -174,8 +202,8 @@ function render(data) {
   els.lastUpdate.textContent = data.last || "-";
   els.watchRange.textContent = data.range || "-";
 
-  const cancelVisible = renderSimpleRows(state.rows.canceling, els.cancelBody, "현재 취소진행중 없음");
-  const availableVisible = renderSimpleRows(state.rows.available, els.availableBody, "현재 예약가능 없음");
+  const cancelVisible = renderCancelRows(state.rows.canceling);
+  const availableVisible = renderAvailableRows(state.rows.available);
   renderHistory(state.rows.history);
 
   els.cancelCount.textContent = `${cancelVisible}건`;
