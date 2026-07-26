@@ -53,13 +53,15 @@ function htmlToText(html) {
 }
 
 async function referenceStatus(res) {
-  const upstream = await fetch(`${REFERENCE_URL}?proxy=${Date.now()}`, { cache: "no-store" });
-  const html = await upstream.text();
+  const stateUrl = new URL("/api/state", REFERENCE_URL);
+  stateUrl.searchParams.set("proxy", String(Date.now()));
+  const upstream = await fetch(stateUrl, { cache: "no-store" });
+  const payload = await upstream.json();
   json(res, upstream.ok ? 200 : upstream.status, {
     ok: upstream.ok,
     fetchedAt: new Date().toISOString(),
-    source: REFERENCE_URL,
-    text: htmlToText(html)
+    source: stateUrl.origin,
+    state: payload
   });
 }
 
