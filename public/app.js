@@ -184,6 +184,19 @@ function compactStatus(value) {
   return String(value || "").replace(/\s*→\s*/g, "→").replace(/\s+/g, "");
 }
 
+function normalizeFacilityName(value) {
+  const text = String(value || "")
+    .replace(/[★☆▶▷▣■●○▲△🚗]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+
+  if (text.includes("든바다")) return "든바다";
+  if (text.includes("난바다")) return "난바다";
+  if (text.includes("허허바다")) return "허허바다";
+  if (text.includes("자동차")) return "자동차캠핑장";
+  return text || String(value || "").trim();
+}
+
 function parseStatePayload(payload) {
   const hb = payload?.state?.heartbeat || payload?.heartbeat || null;
   const stateData = payload?.state || payload || {};
@@ -192,7 +205,7 @@ function parseStatePayload(payload) {
     const expected = detected ? new Date(detected.getTime() + 2 * 60 * 60 * 1000) : null;
     return {
       date: shortDate(item.target_date),
-      facility: item.facility || "",
+      facility: normalizeFacilityName(item.facility),
       room: item.room || "",
       detected: shortTime(detected),
       expected: shortTime(expected),
@@ -202,7 +215,7 @@ function parseStatePayload(payload) {
   });
   const available = (hb?.available_items || []).map(item => ({
     date: shortDate(item.target_date),
-    facility: item.facility || "",
+    facility: normalizeFacilityName(item.facility),
     room: item.room || "",
     status: "발생"
   }));
@@ -211,7 +224,7 @@ function parseStatePayload(payload) {
     type: event.event_type === "canceling" ? "취소중" : "예약가능",
     status: compactStatus(event.state),
     date: shortDate(event.target_date),
-    facility: event.facility || "",
+    facility: normalizeFacilityName(event.facility),
     room: event.room || ""
   }));
 
@@ -227,7 +240,7 @@ function parseStatePayload(payload) {
 }
 
 function facilityMatch(row) {
-  return state.selectedFacilities.has(row.facility);
+  return state.selectedFacilities.has(normalizeFacilityName(row.facility));
 }
 
 function renderFacilityFilter() {
