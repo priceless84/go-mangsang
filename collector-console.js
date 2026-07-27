@@ -218,7 +218,7 @@ window.stopWatchAll && stopWatchAll();
 대시보드 : ${DASHBOARD_URL}
 감시 범위 : ${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}
 동시 요청수 : ${totalRequests}개 조합 / 조회 횟수 : ${count}회차
-진행 상태 : ${completedRequests} / ${totalRequests} 요청 완료 (실패 ${failures})
+진행 상태 : ${completedRequests} / ${totalRequests} 요청 완료 (통신실패 ${failures})
 현재 시간 : ${nowText()}
 이전 갱신 : ${previousRefreshTime}
 최근 갱신 : ${currentRefreshTime}
@@ -264,7 +264,7 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
           totalRequests,
           completedRequests,
           failures,
-          monitorError: totalRequests > 0 && failures >= totalRequests ? "캠핑코리아 조회 실패" : "",
+          monitorError: totalRequests > 0 && failures >= totalRequests ? "캠핑코리아 통신 실패" : "",
           source: "pc-local",
           range: `${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}`,
           intervalSec: CONFIG.intervalSec,
@@ -374,10 +374,7 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
             }
 
             const list = result.res?.value?.childFcltyList;
-            if (!Array.isArray(list)) {
-              failures++;
-              return;
-            }
+            if (!Array.isArray(list)) return;
 
             list.forEach(x => {
               if (!isCanceling(x)) return;
