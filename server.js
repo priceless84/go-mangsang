@@ -131,37 +131,44 @@ function eventStatus(previousMap, currentMap, item) {
 async function report(req, res) {
   const payload = JSON.parse(await readBody(req) || "{}");
   const now = payload.refreshedAt || new Date().toISOString();
-  const active = Array.isArray(payload.active) ? payload.active.map(normalizeItem) : [];
+  const incomingActive = Array.isArray(payload.active) ? payload.active.map(normalizeItem) : [];
   const previousItems = state.heartbeat?.canceling_items || [];
+  const shouldReplaceActive =
+    payload.phase === "finished" ||
+    incomingActive.length > 0 ||
+    !state.heartbeat;
+  const active = shouldReplaceActive ? incomingActive : previousItems;
   const previousMap = new Map(previousItems.map(item => [item.id || itemKey(item), item]));
   const currentMap = new Map(active.map(item => [item.id, item]));
   const events = [];
 
-  for (const item of active) {
-    const status = eventStatus(previousMap, currentMap, item);
-    if (status) {
-      events.push({
-        received_at: now,
-        event_type: "canceling",
-        state: status,
-        target_date: item.target_date,
-        facility: item.facility,
-        room: item.room
-      });
+  if (shouldReplaceActive) {
+    for (const item of active) {
+      const status = eventStatus(previousMap, currentMap, item);
+      if (status) {
+        events.push({
+          received_at: now,
+          event_type: "canceling",
+          state: status,
+          target_date: item.target_date,
+          facility: item.facility,
+          room: item.room
+        });
+      }
     }
-  }
 
-  for (const item of previousItems) {
-    const id = item.id || itemKey(item);
-    if (!currentMap.has(id)) {
-      events.push({
-        received_at: now,
-        event_type: "canceling",
-        state: "종료 → 목록없음",
-        target_date: item.target_date,
-        facility: item.facility,
-        room: item.room
-      });
+    for (const item of previousItems) {
+      const id = item.id || itemKey(item);
+      if (!currentMap.has(id)) {
+        events.push({
+          received_at: now,
+          event_type: "canceling",
+          state: "종료 → 목록없음",
+          target_date: item.target_date,
+          facility: item.facility,
+          room: item.room
+        });
+      }
     }
   }
 
