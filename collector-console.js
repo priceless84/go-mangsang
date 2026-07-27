@@ -149,6 +149,15 @@ window.stopWatchAll && stopWatchAll();
     return String(site.canclYn || "").toUpperCase() === "N";
   }
 
+  function isAvailable(site) {
+    if (!site || typeof site !== "object") return false;
+    return String(site.resveAt || "").toUpperCase() === "Y" &&
+      String(site.resveYn || "").toUpperCase() === "Y" &&
+      String(site.preocpcYn || "").toUpperCase() === "Y" &&
+      String(site.imprtyYn || "").toUpperCase() === "N" &&
+      String(site.canclYn || "").toUpperCase() === "Y";
+  }
+
   function beep() {
     try {
       new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg").play().catch(() => {});
@@ -241,9 +250,19 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
 `);
   }
 
-  async function reportToDashboard(activeRecords, phase) {
+  async function reportToDashboard(activeRecords, availableRecords, phase) {
     try {
       const active = activeRecords.map(record => ({
+        id: record.id,
+        date: record.rawDate,
+        category: record.category,
+        roomName: record.room,
+        fcltyCode: record.fcltyCode,
+        fcltyTyCode: record.fcltyTyCode,
+        resveNoCode: record.resveNoCode,
+        detectedAt: record.detectedAt
+      }));
+      const available = availableRecords.map(record => ({
         id: record.id,
         date: record.rawDate,
         category: record.category,
@@ -268,7 +287,8 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
           source: "pc-local",
           range: `${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}`,
           intervalSec: CONFIG.intervalSec,
-          active
+          active,
+          available
         })
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -345,6 +365,7 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
 
     const tasks = [];
     const activeMap = new Map();
+    const availableMap = new Map();
 
     for (let day = 1; day < CONFIG.maxDays; day++) {
       const checkBeginDe = getFormattedDate(day);
@@ -377,7 +398,7 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
             if (!Array.isArray(list)) return;
 
             list.forEach(x => {
-              if (!isCanceling(x)) return;
+              if (!isCanceling(x) && !isAvailable(x)) return;
               const room = makeRoomText(cat, x);
               const id = [checkBeginDe, cat.code, x.fcltyCode || x.fcltyNm || "", room].join("|");
               const key = id;
@@ -396,7 +417,7 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
               }
 
               const detected = cancelDetectedTimes[key].detected;
-              activeMap.set(id, {
+              const record = {
                 id,
                 rawDate: checkBeginDe,
                 date: `[${checkBeginDe}]`,
@@ -408,7 +429,13 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
                 fcltyCode: x.fcltyCode || "-",
                 fcltyTyCode: x.fcltyTyCode || "-",
                 resveNoCode: String(getActualResveNoCode(x, result.res, resveNoCode) || "-")
-              });
+              };
+
+              if (isCanceling(x)) {
+                activeMap.set(id, record);
+              } else if (isAvailable(x)) {
+                availableMap.set(id, record);
+              }
             });
           });
         });
@@ -421,10 +448,11 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
 
     const progressReport = async () => {
       const activeRecords = Array.from(activeMap.values());
+      const availableRecords = Array.from(availableMap.values());
       if (completedRequests === 1 || completedRequests % 20 === 0 || completedRequests === totalRequests) {
         showScreen(activeRecords);
-        if (activeRecords.length || completedRequests === totalRequests) {
-          await reportToDashboard(activeRecords, "progress");
+        if (activeRecords.length || availableRecords.length || completedRequests === totalRequests) {
+          await reportToDashboard(activeRecords, availableRecords, "progress");
         }
       }
     };
@@ -438,9 +466,10 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
     nextStartTime = new Date(scanEndTime.getTime() + CONFIG.intervalSec * 1000).toLocaleTimeString("ko-KR");
 
     const activeRecords = Array.from(activeMap.values());
+    const availableRecords = Array.from(availableMap.values());
     currentRefreshTime = nowText();
     showScreen(activeRecords);
-    await reportToDashboard(activeRecords, "finished");
+    await reportToDashboard(activeRecords, availableRecords, "finished");
 
     isProcessing = false;
     if (!window.__mangsangStopRequested) {
