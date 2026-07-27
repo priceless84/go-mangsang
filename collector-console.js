@@ -6,10 +6,10 @@ window.stopWatchAll && stopWatchAll();
     const DASHBOARD_URL = "https://go-mangsang.onrender.com";
 
     const CATEGORIES = [
-        { code: "1300", name: "▶든바다" },
-        { code: "1400", name: "▷난바다" },
-        { code: "1500", name: "★허허바다" },
-        { code: "1600", name: "☆자동차" }
+        { code: "1300", name: "▶든바다", resveNoCode: "MA" },
+        { code: "1400", name: "▷난바다", resveNoCode: "MA" },
+        { code: "1500", name: "★허허바다", resveNoCode: "MA" },
+        { code: "1600", name: "☆자동차", resveNoCode: "RR" }
     ];
 
     const CONFIG = {
@@ -528,6 +528,7 @@ ${rows.historyLines.length
                             cat.code,
 
                         resveNoCode:
+                            cat.resveNoCode ||
                             CONFIG.resveNoCode,
 
                         resveBeginDe:
@@ -619,6 +620,7 @@ ${rows.historyLines.length
                                     "-",
 
                                 resveNoCode:
+                                    cat.resveNoCode ||
                                     CONFIG.resveNoCode,
 
                                 detectedAt:
