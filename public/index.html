@@ -4,6 +4,84 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>망상 빈자리 알림</title>
+  <link rel="stylesheet" href="./style.css?v=20260728-reference-layout">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>망상 빈자리 알림</h1>
+      <p>망상오토캠핑리조트 실시간 확인</p>
+    </div>
+    <div class="top-status">
+      <strong id="watchState" class="state-pill">감시 확인 중</strong>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel status-panel">
+      <div class="panel-head">
+        <h2>감시 상태</h2>
+      </div>
+      <div class="status-grid" aria-label="감시 상태">
+        <div><span>현재시간</span><strong id="nowTime">-</strong></div>
+        <div><span>취소진행중</span><strong id="cancelCount">0건</strong></div>
+        <div><span>예약가능</span><strong id="availableCount">0건</strong></div>
+        <div><span>갱신시간</span><strong id="lastUpdate">-</strong></div>
+        <div><span>감시날짜</span><strong id="watchRange">-</strong></div>
+        <div><span>감시시설</span><strong id="facilityText">-</strong></div>
+      </div>
+    </section>
+
+    <section class="panel cancel-panel">
+      <div class="panel-head">
+        <h2>현재 취소진행중</h2>
+        <span id="cancelBadge">0건</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>날짜</th><th>시설</th><th>객실</th><th>감지</th><th>예상</th><th>남은시간</th></tr></thead>
+          <tbody id="cancelBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel available-panel">
+      <div class="panel-head">
+        <h2>현재 예약가능</h2>
+        <span id="availableBadge">0건</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>날짜</th><th>시설</th><th>객실</th><th>상태</th></tr></thead>
+          <tbody id="availableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel history-panel">
+      <div class="panel-head">
+        <h2>최근 이력</h2>
+        <span id="historyBadge">0건</span>
+      </div>
+      <div class="table-wrap history-scroll">
+        <table>
+          <thead><tr><th>시간</th><th>종류</th><th>상태</th><th>날짜</th><th>시설</th><th>객실</th></tr></thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js?v=20260728-reference-layout"></script>
+</body>
+</html>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>망상그곳</title>
   <link rel="stylesheet" href="./style.css?v=20260727-facility-date">
 </head>
