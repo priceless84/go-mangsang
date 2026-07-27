@@ -423,12 +423,13 @@ ${rows.historyLines.length ? rows.historyLines.join("\n") : "-"}
       const activeRecords = Array.from(activeMap.values());
       if (completedRequests === 1 || completedRequests % 20 === 0 || completedRequests === totalRequests) {
         showScreen(activeRecords);
-        await reportToDashboard(activeRecords, "progress");
+        if (activeRecords.length || completedRequests === totalRequests) {
+          await reportToDashboard(activeRecords, "progress");
+        }
       }
     };
 
     showScreen([]);
-    await reportToDashboard([], "started");
     await runLimited(tasks, CONFIG.concurrency, progressReport);
 
     scanEndTime = new Date();
