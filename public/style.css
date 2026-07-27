@@ -51,7 +51,17 @@ h1 {
   font-size: 13px;
 }
 
+.top-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .state-pill,
+.interval-pill,
 .panel-head span {
   display: inline-flex;
   align-items: center;
@@ -63,6 +73,11 @@ h1 {
   background: var(--accent-soft);
   font-weight: 900;
   white-space: nowrap;
+}
+
+.interval-pill {
+  color: #475467;
+  background: #f3f7f5;
 }
 
 main {
@@ -277,9 +292,28 @@ td {
   }
 
   .topbar {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
     padding: 11px 12px;
+  }
+
+  h1 {
+    font-size: 21px;
+  }
+
+  .topbar p {
+    font-size: 12px;
+  }
+
+  .top-status {
+    gap: 4px;
+  }
+
+  .state-pill,
+  .interval-pill {
+    min-height: 28px;
+    padding: 4px 7px;
+    font-size: 12px;
   }
 
   main {
