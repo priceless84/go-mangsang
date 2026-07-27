@@ -36,6 +36,16 @@ function clock(date = new Date()) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
+function shortDate(value) {
+  if (!value) return "-";
+  const text = String(value);
+  const match = text.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${match[2]}-${match[3]}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return text.replace(/^(\d{4})[.-]\s*/, "");
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 function normalizeLine(line) {
   return String(line || "").replace(/\s+/g, " ").trim();
 }
@@ -133,7 +143,16 @@ function statusLabel(heartbeat) {
 
 function localTime(value) {
   if (!value) return "-";
-  return new Date(value).toLocaleString("ko-KR", { hour12: false });
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return `${shortDate(value)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function historyTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function shortTime(value) {
@@ -157,8 +176,12 @@ function remainText(value) {
 function dateSummary(dates) {
   if (!Array.isArray(dates) || !dates.length) return "-";
   const sorted = [...dates].sort();
-  if (sorted.length === 1) return sorted[0];
-  return `${sorted[0]} ~ ${sorted[sorted.length - 1]} (${sorted.length}일)`;
+  if (sorted.length === 1) return shortDate(sorted[0]);
+  return `${shortDate(sorted[0])} ~ ${shortDate(sorted[sorted.length - 1])} (${sorted.length}일)`;
+}
+
+function compactStatus(value) {
+  return String(value || "").replace(/\s*→\s*/g, "→").replace(/\s+/g, "");
 }
 
 function parseStatePayload(payload) {
@@ -168,7 +191,7 @@ function parseStatePayload(payload) {
     const detected = item.detected_at ? new Date(item.detected_at) : null;
     const expected = detected ? new Date(detected.getTime() + 2 * 60 * 60 * 1000) : null;
     return {
-      date: item.target_date || "",
+      date: shortDate(item.target_date),
       facility: item.facility || "",
       room: item.room || "",
       detected: shortTime(detected),
@@ -178,16 +201,16 @@ function parseStatePayload(payload) {
     };
   });
   const available = (hb?.available_items || []).map(item => ({
-    date: item.target_date || "",
+    date: shortDate(item.target_date),
     facility: item.facility || "",
     room: item.room || "",
     status: "발생"
   }));
   const history = (stateData.events || []).slice().reverse().slice(0, 80).map(event => ({
-    time: localTime(event.received_at),
-    type: event.event_type === "canceling" ? "취소진행중" : "예약가능",
-    status: event.state || "",
-    date: event.target_date || "",
+    time: historyTime(event.received_at),
+    type: event.event_type === "canceling" ? "취소중" : "예약가능",
+    status: compactStatus(event.state),
+    date: shortDate(event.target_date),
     facility: event.facility || "",
     room: event.room || ""
   }));
@@ -266,7 +289,7 @@ function renderHistory(rows) {
   els.historyBody.innerHTML = filtered.map(row => `
     <tr>
       <td>${row.time}</td>
-      <td class="${row.type === "취소진행중" ? "type-cancel" : "type-available"}">${row.type}</td>
+      <td class="${row.type === "취소중" ? "type-cancel" : "type-available"}">${row.type}</td>
       <td class="${row.status.startsWith("종료") ? "state-end" : "state-live"}">${row.status}</td>
       <td>${row.date}</td>
       <td>${row.facility}</td>
