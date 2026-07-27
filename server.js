@@ -128,48 +128,81 @@ function eventStatus(previousMap, currentMap, item) {
   return null;
 }
 
+function itemSignalKey(item) {
+  return [
+    item.target_date || "",
+    normalizeFacilityName(item.facility || ""),
+    String(item.room || "").replace(/\(\d+인\)/g, "").trim()
+  ].join("|");
+}
+
+function buildEvents(previousItems, currentItems, eventType, now, endedState) {
+  const previousMap = new Map(previousItems.map(item => [item.id || itemKey(item), item]));
+  const currentMap = new Map(currentItems.map(item => [item.id || itemKey(item), item]));
+  const events = [];
+
+  for (const item of currentItems) {
+    const status = eventStatus(previousMap, currentMap, item);
+    if (status) {
+      events.push({
+        received_at: now,
+        event_type: eventType,
+        state: status,
+        target_date: item.target_date,
+        facility: item.facility,
+        room: item.room
+      });
+    }
+  }
+
+  for (const item of previousItems) {
+    const id = item.id || itemKey(item);
+    if (!currentMap.has(id)) {
+      events.push({
+        received_at: now,
+        event_type: eventType,
+        state: endedState(item),
+        target_date: item.target_date,
+        facility: item.facility,
+        room: item.room
+      });
+    }
+  }
+
+  return events;
+}
+
 async function report(req, res) {
   const payload = JSON.parse(await readBody(req) || "{}");
   const now = payload.refreshedAt || new Date().toISOString();
   const incomingActive = Array.isArray(payload.active) ? payload.active.map(normalizeItem) : [];
+  const incomingAvailable = Array.isArray(payload.available) ? payload.available.map(normalizeItem) : [];
   const previousItems = state.heartbeat?.canceling_items || [];
+  const previousAvailable = state.heartbeat?.available_items || [];
   const shouldReplaceActive =
     payload.phase === "finished" ||
     incomingActive.length > 0 ||
     !state.heartbeat;
+  const shouldReplaceAvailable =
+    payload.phase === "finished" ||
+    incomingAvailable.length > 0 ||
+    !state.heartbeat;
   const active = shouldReplaceActive ? incomingActive : previousItems;
-  const previousMap = new Map(previousItems.map(item => [item.id || itemKey(item), item]));
-  const currentMap = new Map(active.map(item => [item.id, item]));
+  const available = shouldReplaceAvailable ? incomingAvailable : previousAvailable;
   const events = [];
+  const activeKeys = new Set(active.map(itemSignalKey));
+  const availableKeys = new Set(available.map(itemSignalKey));
 
   if (shouldReplaceActive) {
-    for (const item of active) {
-      const status = eventStatus(previousMap, currentMap, item);
-      if (status) {
-        events.push({
-          received_at: now,
-          event_type: "canceling",
-          state: status,
-          target_date: item.target_date,
-          facility: item.facility,
-          room: item.room
-        });
-      }
-    }
+    events.push(...buildEvents(previousItems, active, "canceling", now, item =>
+      availableKeys.has(itemSignalKey(item)) ? "종료 → 예약가능" : "종료 → 목록없음"
+    ));
+  }
 
-    for (const item of previousItems) {
-      const id = item.id || itemKey(item);
-      if (!currentMap.has(id)) {
-        events.push({
-          received_at: now,
-          event_type: "canceling",
-          state: "종료 → 목록없음",
-          target_date: item.target_date,
-          facility: item.facility,
-          room: item.room
-        });
-      }
-    }
+  if (shouldReplaceAvailable) {
+    events.push(...buildEvents(previousAvailable, available, "available", now, item =>
+      activeKeys.has(itemSignalKey(item)) ? "종료 → 취소진행중" : "종료 → 예약중"
+    ));
   }
 
   state = {
@@ -186,7 +219,7 @@ async function report(req, res) {
       facilities: ["든바다", "난바다", "허허바다", "자동차캠핑장"],
       target_dates: [],
       canceling_items: active,
-      available_items: [],
+      available_items: available,
       message: payload.monitorError || ""
     },
     events: [...state.events, ...events].slice(-300)
