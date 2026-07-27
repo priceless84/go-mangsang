@@ -345,6 +345,42 @@ window.stopWatchAll && stopWatchAll();
         } catch (e) {}
     }
 
+    function statusTextOf(x) {
+        return [
+            x?.resveSttusNm,
+            x?.resveStatusNm,
+            x?.statusNm,
+            x?.sttusNm,
+            x?.fcltySttusNm,
+            x?.resveAtNm,
+            x?.resveYnNm,
+            x?.canclYnNm,
+            x?.imprtyYnNm,
+            x?.message,
+            x?.msg
+        ]
+            .filter(Boolean)
+            .join(" ");
+    }
+
+    function isCancelingSignal(cat, x) {
+        if (!x || String(x.canclYn || "").toUpperCase() !== "N") {
+            return false;
+        }
+
+        if (cat.code !== "1600") {
+            return true;
+        }
+
+        const text = statusTextOf(x);
+        const imprtyYn = String(x.imprtyYn || "").toUpperCase();
+
+        return (
+            imprtyYn === "Y" ||
+            /취소\s*진행|취소진행|취소중|취소\s*시설/.test(text)
+        );
+    }
+
     // =========================================================
     // 출력 행 생성
     // =========================================================
@@ -615,10 +651,7 @@ ${rows.historyLines.length
                             }
 
                             list.forEach(x => {
-                                if (
-                                    !x ||
-                                    x.canclYn !== "N"
-                                ) {
+                                if (!isCancelingSignal(cat, x)) {
                                     return;
                                 }
 
