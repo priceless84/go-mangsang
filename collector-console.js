@@ -146,7 +146,22 @@ window.stopWatchAll && stopWatchAll();
 
   function isCanceling(site) {
     if (!site || typeof site !== "object") return false;
-    return String(site.canclYn || "").toUpperCase() === "N";
+    const canclYn = String(site.canclYn || "").toUpperCase();
+    const imprtyYn = String(site.imprtyYn || "").toUpperCase();
+    const statusText = [
+      site.resveSttusNm,
+      site.resveStatusNm,
+      site.statusNm,
+      site.sttusNm,
+      site.fcltySttusNm,
+      site.resveAtNm,
+      site.resveYnNm
+    ].filter(Boolean).join(" ");
+
+    return canclYn === "N" && (
+      imprtyYn === "Y" ||
+      /취소\s*진행|취소진행|취소중|취소\s*시설/.test(statusText)
+    );
   }
 
   function isAvailable(site) {
