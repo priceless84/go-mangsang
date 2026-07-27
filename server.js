@@ -92,11 +92,26 @@ function itemKey(item) {
   ].join("|");
 }
 
+function normalizeFacilityName(value) {
+  const text = String(value || "")
+    .replace(/[★☆▶▷▣■●○▲△🚗]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+
+  if (text.includes("든바다")) return "든바다";
+  if (text.includes("난바다")) return "난바다";
+  if (text.includes("허허바다")) return "허허바다";
+  if (text.includes("자동차")) return "자동차캠핑장";
+  return text || String(value || "").trim();
+}
+
 function normalizeItem(item) {
+  const facility = normalizeFacilityName(item.category || item.facility || "");
+
   return {
     id: item.id || itemKey(item),
     target_date: item.date || item.target_date || "",
-    facility: item.category || item.facility || "",
+    facility,
     room: item.roomName || item.room || "",
     fclty_code: item.fcltyCode || item.fclty_code || "",
     fclty_type_code: item.fcltyTyCode || item.fclty_type_code || "",
