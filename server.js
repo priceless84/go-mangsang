@@ -278,6 +278,15 @@ createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/collector-console.js") {
+      const body = await readFile(join(process.cwd(), "collector-console.js"));
+      send(res, 200, body, {
+        "content-type": "application/javascript; charset=utf-8",
+        "cache-control": "no-store"
+      });
+      return;
+    }
+
     if (url.pathname.startsWith("/api/")) {
       json(res, 404, { ok: false, message: "지원하지 않는 API입니다." });
       return;
