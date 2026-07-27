@@ -6,10 +6,10 @@ window.stopWatchAll && stopWatchAll();
     const DASHBOARD_URL = "https://go-mangsang.onrender.com";
 
     const CATEGORIES = [
-        { code: "1300", name: "▶든바다", resveNoCode: "MA" },
-        { code: "1400", name: "▷난바다", resveNoCode: "MA" },
-        { code: "1500", name: "★허허바다", resveNoCode: "MA" },
-        { code: "1600", name: "☆자동차", resveNoCode: "RR" }
+        { code: "1300", name: "▶든바다", resveNoCodes: ["ME", "MC", "MA", "MG", "MD", "MB"] },
+        { code: "1400", name: "▷난바다", resveNoCodes: ["MH", "MB", "MD", "MG", "MI"] },
+        { code: "1500", name: "★허허바다", resveNoCodes: ["MI", "MF", "MC", "MD", "MB"] },
+        { code: "1600", name: "☆자동차", resveNoCodes: ["RR"] }
     ];
 
     const CONFIG = {
@@ -79,6 +79,66 @@ window.stopWatchAll && stopWatchAll();
             "107": 4,
             "108": 10
         }
+    };
+
+    const ROOM_META = {
+        "1300": {
+            "DE101": { roomNo: "101", fcltyCode: "DE101", fcltyTyCode: "DEB_E2", resveNoCode: "ME" },
+            "DE102": { roomNo: "102", fcltyCode: "DE102", fcltyTyCode: "DEB_E1", resveNoCode: "ME" },
+            "DC103": { roomNo: "103", fcltyCode: "DC103", fcltyTyCode: "DEB_C0", resveNoCode: "MC" },
+            "DA104": { roomNo: "104", fcltyCode: "DA104", fcltyTyCode: "DEB_A0", resveNoCode: "MA" },
+            "DA105": { roomNo: "105", fcltyCode: "DA105", fcltyTyCode: "DEB_A0", resveNoCode: "MA" },
+            "DG106": { roomNo: "106", fcltyCode: "DG106", fcltyTyCode: "DEB_G0", resveNoCode: "MG" },
+            "DA107": { roomNo: "107", fcltyCode: "DA107", fcltyTyCode: "DEB_A0", resveNoCode: "MA" },
+            "DA108": { roomNo: "108", fcltyCode: "DA108", fcltyTyCode: "DEB_A0", resveNoCode: "MA" },
+            "DC109": { roomNo: "109", fcltyCode: "DC109", fcltyTyCode: "DEB_A1", resveNoCode: "MC" },
+            "DE110": { roomNo: "110", fcltyCode: "DE110", fcltyTyCode: "DEB_A2", resveNoCode: "ME" },
+            "DE111": { roomNo: "111", fcltyCode: "DE111", fcltyTyCode: "DEB_A3", resveNoCode: "ME" },
+            "DD112": { roomNo: "112", fcltyCode: "DD112", fcltyTyCode: "DEB_A4", resveNoCode: "MD" },
+            "DA113": { roomNo: "113", fcltyCode: "DA113", fcltyTyCode: "DEB_A5", resveNoCode: "MA" },
+            "DA114": { roomNo: "114", fcltyCode: "DA114", fcltyTyCode: "DEB_A6", resveNoCode: "MA" },
+            "DD115": { roomNo: "115", fcltyCode: "DD115", fcltyTyCode: "DEB_A7", resveNoCode: "MD" },
+            "DC116": { roomNo: "116", fcltyCode: "DC116", fcltyTyCode: "DEB_A8", resveNoCode: "MC" },
+            "DA117": { roomNo: "117", fcltyCode: "DA117", fcltyTyCode: "DEB_A9", resveNoCode: "MA" },
+            "DA118": { roomNo: "118", fcltyCode: "DA118", fcltyTyCode: "DEB_A10", resveNoCode: "MA" },
+            "DD119": { roomNo: "119", fcltyCode: "DD119", fcltyTyCode: "DEB_A11", resveNoCode: "MD" },
+            "DB120": { roomNo: "120", fcltyCode: "DB120", fcltyTyCode: "DEB_A12", resveNoCode: "MB" },
+            "DB121": { roomNo: "121", fcltyCode: "DB121", fcltyTyCode: "DEB_A13", resveNoCode: "MB" },
+            "DB122": { roomNo: "122", fcltyCode: "DB122", fcltyTyCode: "DEB_A14", resveNoCode: "MB" },
+            "DB123": { roomNo: "123", fcltyCode: "DB123", fcltyTyCode: "DEB_A15", resveNoCode: "MB" }
+        },
+        "1400": {
+            "NF101": { roomNo: "101", fcltyCode: "NF101", fcltyTyCode: "NAB_F2", resveNoCode: "MH" },
+            "NF102": { roomNo: "102", fcltyCode: "NF102", fcltyTyCode: "NAB_F2", resveNoCode: "MH" },
+            "NF103": { roomNo: "103", fcltyCode: "NF103", fcltyTyCode: "NAB_F2", resveNoCode: "MH" },
+            "NB104": { roomNo: "104", fcltyCode: "NB104", fcltyTyCode: "NAB_B0", resveNoCode: "MB" },
+            "ND105": { roomNo: "105", fcltyCode: "ND105", fcltyTyCode: "NAB_D0", resveNoCode: "MD" },
+            "NG106": { roomNo: "106", fcltyCode: "NG106", fcltyTyCode: "NAB_G0", resveNoCode: "MG" },
+            "NB107": { roomNo: "107", fcltyCode: "NB107", fcltyTyCode: "NAB_B0", resveNoCode: "MB" },
+            "NB108": { roomNo: "108", fcltyCode: "NB108", fcltyTyCode: "NAB_B0", resveNoCode: "MB" },
+            "NF109": { roomNo: "109", fcltyCode: "NF109", fcltyTyCode: "NAB_F2", resveNoCode: "MH" },
+            "NF110": { roomNo: "110", fcltyCode: "NF110", fcltyTyCode: "NAB_F2", resveNoCode: "MH" },
+            "NB111": { roomNo: "111", fcltyCode: "NB111", fcltyTyCode: "NAB_B0", resveNoCode: "MB" },
+            "NB112": { roomNo: "112", fcltyCode: "NB112", fcltyTyCode: "NAB_B0", resveNoCode: "MB" },
+            "NF113": { roomNo: "113", fcltyCode: "NF113", fcltyTyCode: "NAB_F2", resveNoCode: "MH" },
+            "NG114": { roomNo: "114", fcltyCode: "NG114", fcltyTyCode: "NAB_GU", resveNoCode: "MI" },
+            "NG115": { roomNo: "115", fcltyCode: "NG115", fcltyTyCode: "NAB_GU", resveNoCode: "MI" }
+        },
+        "1500": {
+            "HG101": { roomNo: "101", fcltyCode: "HG101", fcltyTyCode: "HHB_GU", resveNoCode: "MI" },
+            "HE102": { roomNo: "102", fcltyCode: "HE102", fcltyTyCode: "HHB_E2", resveNoCode: "MF" },
+            "HE103": { roomNo: "103", fcltyCode: "HE103", fcltyTyCode: "HHB_E2", resveNoCode: "MF" },
+            "HC104": { roomNo: "104", fcltyCode: "HC104", fcltyTyCode: "HHB_C0", resveNoCode: "MC" },
+            "HD105": { roomNo: "105", fcltyCode: "HD105", fcltyTyCode: "HHB_D0", resveNoCode: "MD" },
+            "HB106": { roomNo: "106", fcltyCode: "HB106", fcltyTyCode: "HHB_B0", resveNoCode: "MB" },
+            "HB107": { roomNo: "107", fcltyCode: "HB107", fcltyTyCode: "HHB_B0", resveNoCode: "MB" },
+            "HG108": { roomNo: "108", fcltyCode: "HG108", fcltyTyCode: "HHB_GU", resveNoCode: "MI" }
+        },
+        "1600": Object.fromEntries(Array.from({ length: 41 }, (_, index) => {
+            const no = String(index + 1);
+            const code = String(1601 + index);
+            return [code, { roomNo: no, fcltyCode: code, fcltyTyCode: "MA_001", resveNoCode: "RR" }];
+        }))
     };
 
     let count = 0;
@@ -240,8 +300,17 @@ window.stopWatchAll && stopWatchAll();
             : "";
     }
 
-    function getCapacity(cat, x) {
-        const roomNo = getRoomNo(x);
+    function getRoomMeta(cat, x, resveNoCode) {
+        const code = String(x?.fcltyCode || "");
+        const meta = ROOM_META[cat.code]?.[code];
+        if (!meta || meta.resveNoCode !== resveNoCode) {
+            return null;
+        }
+        return meta;
+    }
+
+    function getCapacity(cat, x, meta) {
+        const roomNo = meta?.roomNo || getRoomNo(x);
 
         // 자동차캠핑장은 4인
         if (cat.code === "1600") {
@@ -251,11 +320,11 @@ window.stopWatchAll && stopWatchAll();
         return ROOM_CAPACITY[cat.code]?.[roomNo] ?? null;
     }
 
-    function makeRoomText(cat, x) {
+    function makeRoomText(cat, x, meta) {
         const roomName =
             String(x?.fcltyNm || "이름없음").trim();
 
-        const capacity = getCapacity(cat, x);
+        const capacity = getCapacity(cat, x, meta);
 
         return capacity
             ? `${roomName}(${capacity}인)`
@@ -514,61 +583,94 @@ ${rows.historyLines.length
                 getFormattedDate(day + 1);
 
             CATEGORIES.forEach(cat => {
-                const request = $.ajax({
-                    url: CONFIG.url,
-                    type: "POST",
-                    dataType: "json",
-                    cache: false,
+                cat.resveNoCodes.forEach(resveNoCode => {
+                    const request = $.ajax({
+                        url: CONFIG.url,
+                        type: "POST",
+                        dataType: "json",
+                        cache: false,
 
-                    data: {
-                        trrsrtCode:
-                            CONFIG.trrsrtCode,
+                        data: {
+                            trrsrtCode:
+                                CONFIG.trrsrtCode,
 
-                        fcltyCode:
-                            cat.code,
+                            fcltyCode:
+                                cat.code,
 
-                        resveNoCode:
-                            cat.resveNoCode ||
-                            CONFIG.resveNoCode,
+                            resveNoCode,
 
-                        resveBeginDe:
-                            checkBeginDe,
+                            resveBeginDe:
+                                checkBeginDe,
 
-                        resveEndDe:
-                            checkEndDe
-                    },
+                            resveEndDe:
+                                checkEndDe
+                        },
 
-                    success: function (res) {
-                        const list =
-                            res?.value?.childFcltyList;
+                        success: function (res) {
+                            const list =
+                                res?.value?.childFcltyList;
 
-                        if (!Array.isArray(list)) {
-                            return;
-                        }
-
-                        list.forEach(x => {
-                            if (
-                                !x ||
-                                x.canclYn !== "N"
-                            ) {
+                            if (!Array.isArray(list)) {
                                 return;
                             }
 
-                            const room =
-                                makeRoomText(cat, x);
+                            list.forEach(x => {
+                                if (
+                                    !x ||
+                                    x.canclYn !== "N"
+                                ) {
+                                    return;
+                                }
 
-                            const key = [
-                                checkBeginDe,
-                                cat.code,
-                                x.fcltyCode ||
-                                x.fcltyNm ||
-                                ""
-                            ].join("|");
+                                const meta =
+                                    getRoomMeta(cat, x, resveNoCode);
 
-                            if (
-                                !cancelDetectedTimes[key]
-                            ) {
-                                cancelDetectedTimes[key] = {
+                                if (!meta) {
+                                    return;
+                                }
+
+                                const room =
+                                    makeRoomText(cat, x, meta);
+
+                                const key = [
+                                    checkBeginDe,
+                                    cat.code,
+                                    meta.fcltyCode
+                                ].join("|");
+
+                                if (
+                                    !cancelDetectedTimes[key]
+                                ) {
+                                    cancelDetectedTimes[key] = {
+                                        date:
+                                            `[${checkBeginDe}]`,
+
+                                        category:
+                                            cat.name,
+
+                                        room,
+
+                                        detected:
+                                            nowText()
+                                    };
+
+                                    beep();
+                                } else {
+                                    cancelDetectedTimes[key].room =
+                                        room;
+                                }
+
+                                const detected =
+                                    cancelDetectedTimes[key]
+                                        .detected;
+
+                                activeRecords.push({
+                                    id:
+                                        key,
+
+                                    rawDate:
+                                        checkBeginDe,
+
                                     date:
                                         `[${checkBeginDe}]`,
 
@@ -577,62 +679,31 @@ ${rows.historyLines.length
 
                                     room,
 
-                                    detected:
-                                        nowText()
-                                };
+                                    detected,
 
-                                beep();
-                            } else {
-                                cancelDetectedTimes[key].room =
-                                    room;
-                            }
+                                    expected:
+                                        addTwoHours(detected),
 
-                            const detected =
-                                cancelDetectedTimes[key]
-                                    .detected;
+                                    fcltyCode:
+                                        meta.fcltyCode,
 
-                            activeRecords.push({
-                                id:
-                                    key,
+                                    fcltyTyCode:
+                                        meta.fcltyTyCode,
 
-                                rawDate:
-                                    checkBeginDe,
+                                    resveNoCode:
+                                        meta.resveNoCode,
 
-                                date:
-                                    `[${checkBeginDe}]`,
-
-                                category:
-                                    cat.name,
-
-                                room,
-
-                                detected,
-
-                                expected:
-                                    addTwoHours(detected),
-
-                                fcltyCode:
-                                    x.fcltyCode ||
-                                    "-",
-
-                                fcltyTyCode:
-                                    x.fcltyTyCode ||
-                                    "-",
-
-                                resveNoCode:
-                                    cat.resveNoCode ||
-                                    CONFIG.resveNoCode,
-
-                                detectedAt:
-                                    new Date().toISOString()
+                                    detectedAt:
+                                        new Date().toISOString()
+                                });
                             });
-                        });
-                    },
+                        },
 
-                    error: function () {}
+                        error: function () {}
+                    });
+
+                    promises.push(request);
                 });
-
-                promises.push(request);
             });
         }
 
