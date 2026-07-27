@@ -651,10 +651,7 @@ ${rows.historyLines.length
                         }
 
                         list.forEach(x => {
-                            if (
-                                !x ||
-                                x.canclYn !== "N"
-                            ) {
+                            if (!isCancelingSignal(cat, x)) {
                                 return;
                             }
 
