@@ -6,10 +6,10 @@ window.stopWatchAll && stopWatchAll();
     const DASHBOARD_URL = "https://go-mangsang.onrender.com";
 
     const CATEGORIES = [
-        { code: "1300", name: "▶든바다", resveNoCodes: ["ME", "MC", "MA", "MG", "MD", "MB"] },
-        { code: "1400", name: "▷난바다", resveNoCodes: ["MH", "MB", "MD", "MG", "MI"] },
-        { code: "1500", name: "★허허바다", resveNoCodes: ["MI", "MF", "MC", "MD", "MB"] },
-        { code: "1600", name: "☆자동차", resveNoCodes: ["RR"] }
+        { code: "1300", name: "▶든바다" },
+        { code: "1400", name: "▷난바다" },
+        { code: "1500", name: "★허허바다" },
+        { code: "1600", name: "☆자동차" }
     ];
 
     const CONFIG = {
@@ -619,91 +619,60 @@ ${rows.historyLines.length
                 getFormattedDate(day + 1);
 
             CATEGORIES.forEach(cat => {
-                cat.resveNoCodes.forEach(resveNoCode => {
-                    const request = $.ajax({
-                        url: CONFIG.url,
-                        type: "POST",
-                        dataType: "json",
-                        cache: false,
+                const request = $.ajax({
+                    url: CONFIG.url,
+                    type: "POST",
+                    dataType: "json",
+                    cache: false,
 
-                        data: {
-                            trrsrtCode:
-                                CONFIG.trrsrtCode,
+                    data: {
+                        trrsrtCode:
+                            CONFIG.trrsrtCode,
 
-                            fcltyCode:
-                                cat.code,
+                        fcltyCode:
+                            cat.code,
 
-                            resveNoCode,
+                        resveNoCode:
+                            CONFIG.resveNoCode,
 
-                            resveBeginDe:
-                                checkBeginDe,
+                        resveBeginDe:
+                            checkBeginDe,
 
-                            resveEndDe:
-                                checkEndDe
-                        },
+                        resveEndDe:
+                            checkEndDe
+                    },
 
-                        success: function (res) {
-                            const list =
-                                res?.value?.childFcltyList;
+                    success: function (res) {
+                        const list =
+                            res?.value?.childFcltyList;
 
-                            if (!Array.isArray(list)) {
+                        if (!Array.isArray(list)) {
+                            return;
+                        }
+
+                        list.forEach(x => {
+                            if (
+                                !x ||
+                                x.canclYn !== "N"
+                            ) {
                                 return;
                             }
 
-                            list.forEach(x => {
-                                if (!isCancelingSignal(cat, x)) {
-                                    return;
-                                }
+                            const room =
+                                makeRoomText(cat, x);
 
-                                const meta =
-                                    getRoomMeta(cat, x, resveNoCode);
+                            const key = [
+                                checkBeginDe,
+                                cat.code,
+                                x.fcltyCode ||
+                                x.fcltyNm ||
+                                ""
+                            ].join("|");
 
-                                if (!meta) {
-                                    return;
-                                }
-
-                                const room =
-                                    makeRoomText(cat, x, meta);
-
-                                const key = [
-                                    checkBeginDe,
-                                    cat.code,
-                                    meta.fcltyCode
-                                ].join("|");
-
-                                if (
-                                    !cancelDetectedTimes[key]
-                                ) {
-                                    cancelDetectedTimes[key] = {
-                                        date:
-                                            `[${checkBeginDe}]`,
-
-                                        category:
-                                            cat.name,
-
-                                        room,
-
-                                        detected:
-                                            nowText()
-                                    };
-
-                                    beep();
-                                } else {
-                                    cancelDetectedTimes[key].room =
-                                        room;
-                                }
-
-                                const detected =
-                                    cancelDetectedTimes[key]
-                                        .detected;
-
-                                activeRecords.push({
-                                    id:
-                                        key,
-
-                                    rawDate:
-                                        checkBeginDe,
-
+                            if (
+                                !cancelDetectedTimes[key]
+                            ) {
+                                cancelDetectedTimes[key] = {
                                     date:
                                         `[${checkBeginDe}]`,
 
@@ -712,31 +681,59 @@ ${rows.historyLines.length
 
                                     room,
 
-                                    detected,
+                                    detected:
+                                        nowText()
+                                };
 
-                                    expected:
-                                        addTwoHours(detected),
+                                beep();
+                            } else {
+                                cancelDetectedTimes[key].room =
+                                    room;
+                            }
 
-                                    fcltyCode:
-                                        meta.fcltyCode,
+                            const detected =
+                                cancelDetectedTimes[key]
+                                    .detected;
 
-                                    fcltyTyCode:
-                                        meta.fcltyTyCode,
+                            activeRecords.push({
+                                id:
+                                    key,
 
-                                    resveNoCode:
-                                        meta.resveNoCode,
+                                rawDate:
+                                    checkBeginDe,
 
-                                    detectedAt:
-                                        new Date().toISOString()
-                                });
+                                date:
+                                    `[${checkBeginDe}]`,
+
+                                category:
+                                    cat.name,
+
+                                room,
+
+                                detected,
+
+                                expected:
+                                    addTwoHours(detected),
+
+                                fcltyCode:
+                                    x.fcltyCode || "",
+
+                                fcltyTyCode:
+                                    x.fcltyTyCode || "",
+
+                                resveNoCode:
+                                    x.resveNoCode || CONFIG.resveNoCode,
+
+                                detectedAt:
+                                    new Date().toISOString()
                             });
-                        },
+                        });
+                    },
 
-                        error: function () {}
-                    });
-
-                    promises.push(request);
+                    error: function () {}
                 });
+
+                promises.push(request);
             });
         }
 
