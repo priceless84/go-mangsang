@@ -247,23 +247,22 @@ td {
 
 .history-panel th:nth-child(3),
 .history-panel td:nth-child(3) {
-  width: 18%;
+  width: 22%;
 }
 
 .history-panel th:nth-child(4),
 .history-panel td:nth-child(4) {
-  width: 12%;
+  width: 14%;
 }
 
 .history-panel th:nth-child(5),
 .history-panel td:nth-child(5) {
-  width: 20%;
+  width: 21%;
 }
 
 .history-panel th:nth-child(6),
 .history-panel td:nth-child(6) {
-  width: 21%;
-  text-overflow: clip;
+  width: 14%;
 }
 
 .type-cancel {
@@ -369,35 +368,11 @@ td {
 
   .history-panel th:nth-child(1),
   .history-panel td:nth-child(1) {
-    width: 11%;
-  }
-
-  .history-panel th:nth-child(2),
-  .history-panel td:nth-child(2) {
-    width: 13%;
-  }
-
-  .history-panel th:nth-child(3),
-  .history-panel td:nth-child(3) {
-    width: 15%;
-  }
-
-  .history-panel th:nth-child(4),
-  .history-panel td:nth-child(4) {
-    width: 11%;
-  }
-
-  .history-panel th:nth-child(5),
-  .history-panel td:nth-child(5) {
-    width: 23%;
+    width: 12%;
   }
 
   .history-panel th:nth-child(6),
   .history-panel td:nth-child(6) {
-    width: 27%;
-    padding-right: 2px;
-    padding-left: 2px;
-    font-size: 11px;
-    text-overflow: clip;
+    width: 13%;
   }
 }
