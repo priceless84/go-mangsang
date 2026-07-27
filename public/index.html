@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>망상그곳</title>
-  <link rel="stylesheet" href="./style.css?v=20260727-watch-interval">
+  <link rel="stylesheet" href="./style.css?v=20260727-facility-date">
 </head>
 <body>
   <header class="topbar">
@@ -15,7 +15,6 @@
     </div>
     <div class="top-status">
       <strong id="watchState" class="state-pill">감시 확인 중</strong>
-      <span class="interval-pill">감시주기 5초</span>
     </div>
   </header>
 
@@ -25,12 +24,11 @@
       <div><span>취소진행</span><strong id="cancelCount">0건</strong></div>
       <div><span>예약가능</span><strong id="availableCount">0건</strong></div>
       <div><span>갱신시간</span><strong id="lastUpdate">-</strong></div>
-      <div><span>감시날짜</span><strong id="watchRange">-</strong></div>
     </section>
 
     <section class="filter-panel">
       <div>
-        <span>감시시설</span>
+        <span>감시시설(<em id="watchRange">-</em>)</span>
         <strong id="facilityText">든바다, 난바다, 허허바다, 자동차캠핑장</strong>
       </div>
       <div class="facility-filter" id="facilityFilter" aria-label="시설 선택"></div>
@@ -76,6 +74,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=20260727-watch-interval"></script>
+  <script src="./app.js?v=20260727-facility-date"></script>
 </body>
 </html>
