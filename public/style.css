@@ -61,7 +61,6 @@ h1 {
 }
 
 .state-pill,
-.interval-pill,
 .panel-head span {
   display: inline-flex;
   align-items: center;
@@ -73,11 +72,6 @@ h1 {
   background: var(--accent-soft);
   font-weight: 900;
   white-space: nowrap;
-}
-
-.interval-pill {
-  color: #475467;
-  background: #f3f7f5;
 }
 
 main {
@@ -121,6 +115,12 @@ main {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.filter-panel em {
+  color: #344054;
+  font-style: normal;
+  font-weight: 900;
 }
 
 .summary-grid strong,
@@ -309,8 +309,7 @@ td {
     gap: 4px;
   }
 
-  .state-pill,
-  .interval-pill {
+  .state-pill {
     min-height: 28px;
     padding: 4px 7px;
     font-size: 12px;
