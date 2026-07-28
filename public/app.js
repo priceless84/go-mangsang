@@ -192,7 +192,7 @@ function dateSummary(dates) {
   if (!Array.isArray(dates) || !dates.length) return "-";
   const sorted = [...dates].sort();
   if (sorted.length === 1) return compactDate(sorted[0]);
-  return `${compactDate(sorted[0])}~${compactDate(sorted[sorted.length - 1])}(${sorted.length}일)`;
+  return `${compactDate(sorted[0])}~${compactDate(sorted[sorted.length - 1])}(30일)`;
 }
 
 function rangeSummary(value, dates) {
@@ -207,7 +207,7 @@ function rangeSummary(value, dates) {
       const end = new Date(found[1]);
       const days = Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())
         ? ""
-        : `(${Math.round((end - start) / 86400000) + 1}일)`;
+        : "(30일)";
       return `${compactDate(found[0])}~${compactDate(found[1])}${days}`;
     }
     if (found?.length === 1) return compactDate(found[0]);
