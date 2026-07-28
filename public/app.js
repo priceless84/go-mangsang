@@ -1,5 +1,9 @@
 const FACILITIES = ["든바다", "난바다", "허허바다", "자동차캠핑장"];
 const REFRESH_MS = 5000;
+const DATA_SOURCES = [
+  "/api/reference",
+  "https://mangsang-alarm-dashboard.onrender.com/api/reference"
+];
 
 const state = {
   rows: {
@@ -257,6 +261,38 @@ function parseStatePayload(payload) {
   };
 }
 
+function payloadScore(payload) {
+  const hb = payload?.state?.heartbeat || payload?.heartbeat || null;
+  const stateData = payload?.state || payload || {};
+  const canceling = hb?.canceling_items?.length || 0;
+  const available = hb?.available_items?.length || 0;
+  const events = stateData.events?.length || 0;
+  const received = hb?.received_at ? new Date(hb.received_at).getTime() : 0;
+  return canceling * 1000000 + available * 1000 + events + Math.floor((Number.isFinite(received) ? received : 0) / 1000000000000);
+}
+
+async function loadPayload() {
+  const results = await Promise.allSettled(DATA_SOURCES.map(async source => {
+    const joiner = source.includes("?") ? "&" : "?";
+    const response = await fetch(`${source}${joiner}ts=${Date.now()}`, { cache: "no-store" });
+    const payload = await response.json();
+    if (!payload.ok && !payload.text && !payload.state) {
+      throw new Error(payload.message || "조회 실패");
+    }
+    return payload;
+  }));
+
+  const payloads = results
+    .filter(result => result.status === "fulfilled")
+    .map(result => result.value);
+
+  if (!payloads.length) {
+    throw new Error("조회 실패");
+  }
+
+  return payloads.sort((a, b) => payloadScore(b) - payloadScore(a))[0];
+}
+
 function facilityMatch(row) {
   return state.selectedFacilities.has(normalizeFacilityName(row.facility));
 }
@@ -351,9 +387,7 @@ function render(data) {
 
 async function refresh() {
   try {
-    const response = await fetch(`/api/reference?ts=${Date.now()}`, { cache: "no-store" });
-    const payload = await response.json();
-    if (!payload.ok && !payload.text && !payload.state) throw new Error(payload.message || "조회 실패");
+    const payload = await loadPayload();
     render(payload.state ? parseStatePayload(payload) : parseDashboard(payload.text || ""));
   } catch (error) {
     els.watchState.textContent = "연결 확인 필요";
