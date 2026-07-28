@@ -6,10 +6,10 @@ window.stopWatchAll && stopWatchAll();
     const DASHBOARD_URL = "https://go-mangsang.onrender.com";
 
     const CATEGORIES = [
-        { code: "1300", name: "▶든바다" },
-        { code: "1400", name: "▷난바다" },
-        { code: "1500", name: "★허허바다" },
-        { code: "1600", name: "☆자동차" }
+        { code: "1300", name: "▶든바다", resveNoCodes: ["ME", "MC", "MA", "MG", "MD", "MB"] },
+        { code: "1400", name: "▷난바다", resveNoCodes: ["MH", "MB", "MD", "MG", "MI"] },
+        { code: "1500", name: "★허허바다", resveNoCodes: ["MI", "MF", "MC", "MD", "MB"] },
+        { code: "1600", name: "☆자동차", resveNoCodes: ["RR"] }
     ];
 
     const CONFIG = {
@@ -613,6 +613,12 @@ ${rows.historyLines.length
                 getFormattedDate(day + 1);
 
             CATEGORIES.forEach(cat => {
+                const resveNoCodes =
+                    Array.isArray(cat.resveNoCodes) && cat.resveNoCodes.length
+                        ? cat.resveNoCodes
+                        : [CONFIG.resveNoCode];
+
+                resveNoCodes.forEach(resveNoCode => {
                 const request = new Promise(resolve => {
                     $.ajax({
                         url: CONFIG.url,
@@ -628,7 +634,7 @@ ${rows.historyLines.length
                                 cat.code,
 
                             resveNoCode:
-                                CONFIG.resveNoCode,
+                                resveNoCode,
 
                             resveBeginDe:
                                 checkBeginDe,
@@ -646,12 +652,20 @@ ${rows.historyLines.length
                             }
 
                             list.forEach(x => {
+                                const meta =
+                                    getRoomMeta(cat, x, resveNoCode);
+
+                                if (ROOM_META[cat.code] && !meta) {
+                                    return;
+                                }
+
                                 const room =
-                                    makeRoomText(cat, x);
+                                    makeRoomText(cat, x, meta);
 
                                 const key = [
                                     checkBeginDe,
                                     cat.code,
+                                    resveNoCode,
                                     x.fcltyCode ||
                                     x.fcltyNm ||
                                     ""
@@ -677,10 +691,10 @@ ${rows.historyLines.length
                                             x.fcltyCode || "",
 
                                         fcltyTyCode:
-                                            x.fcltyTyCode || "",
+                                            x.fcltyTyCode || meta?.fcltyTyCode || "",
 
                                         resveNoCode:
-                                            x.resveNoCode || CONFIG.resveNoCode,
+                                            x.resveNoCode || meta?.resveNoCode || resveNoCode,
 
                                         detectedAt:
                                             new Date().toISOString()
@@ -741,10 +755,10 @@ ${rows.historyLines.length
                                         x.fcltyCode || "",
 
                                     fcltyTyCode:
-                                        x.fcltyTyCode || "",
+                                        x.fcltyTyCode || meta?.fcltyTyCode || "",
 
                                     resveNoCode:
-                                        x.resveNoCode || CONFIG.resveNoCode,
+                                        x.resveNoCode || meta?.resveNoCode || resveNoCode,
 
                                     detectedAt:
                                         new Date().toISOString()
@@ -763,6 +777,7 @@ ${rows.historyLines.length
                 });
 
                 promises.push(request);
+                });
             });
         }
 
