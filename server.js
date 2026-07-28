@@ -108,17 +108,10 @@ async function remoteReference() {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 3500);
 
-  try {
-    const response = await fetch(`${REMOTE_REFERENCE_URL}?ts=${Date.now()}`, {
-      cache: "no-store",
-      signal: controller.signal
-    });
-
-    if (response.ok) return await response.json();
-
+  async function pageReference(signal) {
     const pageResponse = await fetch(`${REMOTE_REFERENCE_PAGE_URL}?ts=${Date.now()}`, {
       cache: "no-store",
-      signal: controller.signal
+      signal
     });
 
     if (!pageResponse.ok) return null;
@@ -128,19 +121,23 @@ async function remoteReference() {
       fetchedAt: new Date().toISOString(),
       text: htmlToText(await pageResponse.text())
     };
+  }
+
+  try {
+    const response = await fetch(`${REMOTE_REFERENCE_URL}?ts=${Date.now()}`, {
+      cache: "no-store",
+      signal: controller.signal
+    });
+
+    if (response.ok) {
+      const apiPayload = await response.json();
+      if (liveRowCount(apiPayload) > 0) return apiPayload;
+    }
+
+    return await pageReference(controller.signal);
   } catch {
     try {
-      const pageResponse = await fetch(`${REMOTE_REFERENCE_PAGE_URL}?ts=${Date.now()}`, {
-        cache: "no-store"
-      });
-
-      if (!pageResponse.ok) return null;
-
-      return {
-        ok: true,
-        fetchedAt: new Date().toISOString(),
-        text: htmlToText(await pageResponse.text())
-      };
+      return await pageReference(undefined);
     } catch {
       return null;
     }
