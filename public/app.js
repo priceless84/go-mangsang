@@ -145,7 +145,7 @@ function localTime(value) {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
 function historyTime(value) {
@@ -178,6 +178,17 @@ function dateSummary(dates) {
   const sorted = [...dates].sort();
   if (sorted.length === 1) return shortDate(sorted[0]);
   return `${shortDate(sorted[0])} ~ ${shortDate(sorted[sorted.length - 1])} (${sorted.length}일)`;
+}
+
+function rangeSummary(value, dates) {
+  const text = String(value || "").trim();
+  if (text) {
+    const found = text.match(/\d{4}-\d{2}-\d{2}/g);
+    if (found?.length >= 2) return `${shortDate(found[0])} ~ ${shortDate(found[1])}`;
+    if (found?.length === 1) return shortDate(found[0]);
+    return text;
+  }
+  return dateSummary(dates);
 }
 
 function compactStatus(value) {
@@ -237,7 +248,7 @@ function parseStatePayload(payload) {
   return {
     watchState: statusLabel(hb),
     last: localTime(hb?.received_at),
-    range: dateSummary(hb?.target_dates),
+    range: rangeSummary(hb?.range, hb?.target_dates),
     facilities: Array.isArray(hb?.facilities) ? hb.facilities.join(", ") : FACILITIES.join(", "),
     canceling,
     available,
