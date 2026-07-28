@@ -179,12 +179,13 @@ async function report(req, res) {
   const incomingAvailable = Array.isArray(payload.available) ? payload.available.map(normalizeItem) : [];
   const previousItems = state.heartbeat?.canceling_items || [];
   const previousAvailable = state.heartbeat?.available_items || [];
+  const hasFailures = Number(payload.failures || 0) > 0;
   const shouldReplaceActive =
-    payload.phase === "finished" ||
+    (payload.phase === "finished" && (!hasFailures || incomingActive.length > 0)) ||
     incomingActive.length > 0 ||
     !state.heartbeat;
   const shouldReplaceAvailable =
-    payload.phase === "finished" ||
+    (payload.phase === "finished" && (!hasFailures || incomingAvailable.length > 0)) ||
     incomingAvailable.length > 0 ||
     !state.heartbeat;
   const active = shouldReplaceActive ? incomingActive : previousItems;
