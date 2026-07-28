@@ -374,11 +374,12 @@ function renderHistory(rows) {
   const filtered = rows.filter(facilityMatch).slice(0, 80);
   els.historyBadge.textContent = `${filtered.length}건`;
   if (!filtered.length) {
-    els.historyBody.innerHTML = emptyRow(5, "최근 이력이 없습니다");
+    els.historyBody.innerHTML = emptyRow(6, "최근 이력이 없습니다");
     return;
   }
   els.historyBody.innerHTML = filtered.map(row => `
     <tr>
+      <td>${row.time}</td>
       <td>${row.date}</td>
       <td>${row.facility}</td>
       <td>${row.room}</td>
