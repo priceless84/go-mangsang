@@ -51,6 +51,16 @@ function shortDate(value) {
   return `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+function compactDate(value) {
+  if (!value) return "-";
+  const text = String(value);
+  const match = text.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${Number(match[2])}/${Number(match[3])}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return text.replace(/^0/, "").replace(/-0?/g, "/");
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
 function normalizeLine(line) {
   return String(line || "").replace(/\s+/g, " ").trim();
 }
@@ -181,19 +191,29 @@ function remainText(value) {
 function dateSummary(dates) {
   if (!Array.isArray(dates) || !dates.length) return "-";
   const sorted = [...dates].sort();
-  if (sorted.length === 1) return shortDate(sorted[0]);
-  return `${shortDate(sorted[0])} ~ ${shortDate(sorted[sorted.length - 1])} (${sorted.length}일)`;
+  if (sorted.length === 1) return compactDate(sorted[0]);
+  return `${compactDate(sorted[0])}~${compactDate(sorted[sorted.length - 1])}(${sorted.length}일)`;
 }
 
 function rangeSummary(value, dates) {
+  const byDates = dateSummary(dates);
+  if (byDates !== "-") return byDates;
+
   const text = String(value || "").trim();
   if (text) {
     const found = text.match(/\d{4}-\d{2}-\d{2}/g);
-    if (found?.length >= 2) return `${shortDate(found[0])} ~ ${shortDate(found[1])}`;
-    if (found?.length === 1) return shortDate(found[0]);
+    if (found?.length >= 2) {
+      const start = new Date(found[0]);
+      const end = new Date(found[1]);
+      const days = Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())
+        ? ""
+        : `(${Math.round((end - start) / 86400000) + 1}일)`;
+      return `${compactDate(found[0])}~${compactDate(found[1])}${days}`;
+    }
+    if (found?.length === 1) return compactDate(found[0]);
     return text;
   }
-  return dateSummary(dates);
+  return "-";
 }
 
 function compactStatus(value) {
