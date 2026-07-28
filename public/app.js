@@ -217,7 +217,18 @@ function rangeSummary(value, dates) {
 }
 
 function compactStatus(value) {
-  return String(value || "").replace(/\s*→\s*/g, "→").replace(/\s+/g, "");
+  const text = String(value || "").replace(/\s*→\s*/g, "→").replace(/\s+/g, "");
+  if (!text) return "-";
+  if (text.includes("발생")) return "발생";
+  if (text.includes("선점")) return "선점중";
+  if (text.includes("취소") || text.includes("진행")) return "진행중";
+  if (text.includes("예약가능") && text.includes("종료")) return "가능종료";
+  if ((text.includes("예약마감") || text.includes("마감") || text.includes("불가")) && text.includes("종료")) return "마감종료";
+  if (text.includes("예약완료") || text.includes("예약중") || text.includes("결제완료")) return "예약중";
+  if (text.includes("예약가능")) return "예약가능";
+  if (text.includes("예약마감") || text.includes("마감") || text.includes("불가")) return "마감";
+  if (text.includes("종료")) return "종료";
+  return text;
 }
 
 function normalizeFacilityName(value) {
