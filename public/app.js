@@ -287,11 +287,14 @@ function parseStatePayload(payload) {
 function payloadScore(payload) {
   const hb = payload?.state?.heartbeat || payload?.heartbeat || null;
   const stateData = payload?.state || payload || {};
-  const canceling = hb?.canceling_items?.length || 0;
-  const available = hb?.available_items?.length || 0;
-  const events = stateData.events?.length || 0;
+  const textData = payload?.text || "";
+  const parsedText = textData ? parseDashboard(textData) : null;
+  const canceling = hb?.canceling_items?.length || parsedText?.canceling?.length || parsedText?.cancelCount || 0;
+  const available = hb?.available_items?.length || parsedText?.available?.length || parsedText?.availableCount || 0;
+  const events = stateData.events?.length || parsedText?.history?.length || 0;
   const received = hb?.received_at ? new Date(hb.received_at).getTime() : 0;
-  return canceling * 1000000 + available * 1000 + events + Math.floor((Number.isFinite(received) ? received : 0) / 1000000000000);
+  const liveRows = canceling + available;
+  return liveRows * 1000000000 + events * 1000000 + Math.floor((Number.isFinite(received) ? received : 0) / 1000000000000);
 }
 
 async function loadPayload() {
