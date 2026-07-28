@@ -120,6 +120,13 @@ function normalizeItem(item) {
   };
 }
 
+function listFromPayload(payload, keys) {
+  for (const key of keys) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+  return [];
+}
+
 function eventStatus(previousMap, currentMap, item) {
   const previous = previousMap.has(item.id);
   const current = currentMap.has(item.id);
@@ -175,19 +182,32 @@ function buildEvents(previousItems, currentItems, eventType, now, endedState) {
 async function report(req, res) {
   const payload = JSON.parse(await readBody(req) || "{}");
   const now = payload.refreshedAt || new Date().toISOString();
-  const incomingActive = Array.isArray(payload.active) ? payload.active.map(normalizeItem) : [];
-  const incomingAvailable = Array.isArray(payload.available) ? payload.available.map(normalizeItem) : [];
+  const incomingActive = listFromPayload(payload, [
+    "active",
+    "canceling",
+    "cancelingItems",
+    "canceling_items",
+    "currentCanceling"
+  ]).map(normalizeItem);
+  const incomingAvailable = listFromPayload(payload, [
+    "available",
+    "availableItems",
+    "available_items",
+    "currentAvailable"
+  ]).map(normalizeItem);
   const previousItems = state.heartbeat?.canceling_items || [];
   const previousAvailable = state.heartbeat?.available_items || [];
   const hasFailures = Number(payload.failures || 0) > 0;
+  const hasAnyIncomingList = incomingActive.length > 0 || incomingAvailable.length > 0;
+  const isFinished = payload.phase === "finished" || payload.phase === "complete";
   const shouldReplaceActive =
-    (payload.phase === "finished" && (!hasFailures || incomingActive.length > 0)) ||
     incomingActive.length > 0 ||
-    !state.heartbeat;
+    (isFinished && !hasFailures) ||
+    (!state.heartbeat && hasAnyIncomingList);
   const shouldReplaceAvailable =
-    (payload.phase === "finished" && (!hasFailures || incomingAvailable.length > 0)) ||
     incomingAvailable.length > 0 ||
-    !state.heartbeat;
+    (isFinished && !hasFailures) ||
+    (!state.heartbeat && hasAnyIncomingList);
   const active = shouldReplaceActive ? incomingActive : previousItems;
   const available = shouldReplaceAvailable ? incomingAvailable : previousAvailable;
   const events = [];
