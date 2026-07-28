@@ -282,32 +282,36 @@ td {
 
 .history-panel th:nth-child(1),
 .history-panel td:nth-child(1) {
-  width: 13%;
+  width: 12%;
 }
 
 .history-panel th:nth-child(2),
 .history-panel td:nth-child(2) {
-  width: 16%;
+  width: 14%;
 }
 
 .history-panel th:nth-child(3),
 .history-panel td:nth-child(3) {
-  width: 22%;
+  width: 18%;
 }
 
 .history-panel th:nth-child(4),
 .history-panel td:nth-child(4) {
-  width: 14%;
+  width: 12%;
 }
 
 .history-panel th:nth-child(5),
 .history-panel td:nth-child(5) {
-  width: 21%;
+  width: 24%;
 }
 
 .history-panel th:nth-child(6),
 .history-panel td:nth-child(6) {
-  width: 14%;
+  width: 20%;
+}
+
+.history-panel td:nth-child(6) {
+  text-overflow: clip;
 }
 
 .state-end {
@@ -438,11 +442,37 @@ td {
 
   .history-panel th:nth-child(1),
   .history-panel td:nth-child(1) {
-    width: 12%;
+    width: 11%;
+  }
+
+  .history-panel th:nth-child(2),
+  .history-panel td:nth-child(2) {
+    width: 13%;
+  }
+
+  .history-panel th:nth-child(3),
+  .history-panel td:nth-child(3) {
+    width: 17%;
+  }
+
+  .history-panel th:nth-child(4),
+  .history-panel td:nth-child(4) {
+    width: 11%;
+  }
+
+  .history-panel th:nth-child(5),
+  .history-panel td:nth-child(5) {
+    width: 25%;
   }
 
   .history-panel th:nth-child(6),
   .history-panel td:nth-child(6) {
-    width: 13%;
+    width: 23%;
+  }
+
+  .history-panel td:nth-child(6) {
+    padding-left: 1px;
+    padding-right: 1px;
+    font-size: 11px;
   }
 }
