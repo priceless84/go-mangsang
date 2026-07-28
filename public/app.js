@@ -7,7 +7,8 @@ const state = {
     available: [],
     history: []
   },
-  timer: null
+  timer: null,
+  selectedFacilities: new Set(FACILITIES)
 };
 
 const els = {
@@ -18,6 +19,7 @@ const els = {
   lastUpdate: document.querySelector("#lastUpdate"),
   watchRange: document.querySelector("#watchRange"),
   facilityText: document.querySelector("#facilityText"),
+  facilityFilter: document.querySelector("#facilityFilter"),
   cancelBadge: document.querySelector("#cancelBadge"),
   availableBadge: document.querySelector("#availableBadge"),
   historyBadge: document.querySelector("#historyBadge"),
@@ -243,12 +245,26 @@ function parseStatePayload(payload) {
   };
 }
 
+function facilityMatch(row) {
+  return state.selectedFacilities.has(normalizeFacilityName(row.facility));
+}
+
+function renderFacilityFilter() {
+  if (!els.facilityFilter) return;
+  els.facilityFilter.innerHTML = FACILITIES.map(facility => `
+    <button type="button" class="${state.selectedFacilities.has(facility) ? "active" : ""}" data-facility="${facility}">
+      ${facility}
+    </button>
+  `).join("");
+  els.facilityText.textContent = FACILITIES.filter(facility => state.selectedFacilities.has(facility)).join(", ") || "선택 없음";
+}
+
 function emptyRow(colspan, text) {
   return `<tr><td class="empty" colspan="${colspan}">${text}</td></tr>`;
 }
 
 function renderCancelRows(rows) {
-  const filtered = rows;
+  const filtered = rows.filter(facilityMatch);
   if (!filtered.length) {
     els.cancelBody.innerHTML = emptyRow(6, "현재 취소진행중 없음");
     return 0;
@@ -267,7 +283,7 @@ function renderCancelRows(rows) {
 }
 
 function renderAvailableRows(rows) {
-  const filtered = rows;
+  const filtered = rows.filter(facilityMatch);
   if (!filtered.length) {
     els.availableBody.innerHTML = emptyRow(4, "현재 예약가능 없음");
     return 0;
@@ -284,7 +300,7 @@ function renderAvailableRows(rows) {
 }
 
 function renderHistory(rows) {
-  const filtered = rows.slice(0, 80);
+  const filtered = rows.filter(facilityMatch).slice(0, 80);
   els.historyBadge.textContent = `${filtered.length}건`;
   if (!filtered.length) {
     els.historyBody.innerHTML = emptyRow(6, "최근 이력이 없습니다");
@@ -310,7 +326,6 @@ function render(data) {
   els.watchState.textContent = data.watchState || "감시 확인";
   els.lastUpdate.textContent = data.last || "-";
   els.watchRange.textContent = data.range || "-";
-  els.facilityText.textContent = displayFacilities(data.facilities);
 
   const cancelVisible = renderCancelRows(state.rows.canceling);
   const availableVisible = renderAvailableRows(state.rows.available);
@@ -335,8 +350,29 @@ async function refresh() {
 }
 
 function start() {
+  renderFacilityFilter();
   refresh();
   state.timer = setInterval(refresh, REFRESH_MS);
 }
+
+els.facilityFilter?.addEventListener("click", event => {
+  const button = event.target.closest("button[data-facility]");
+  if (!button) return;
+  const facility = button.dataset.facility;
+  if (state.selectedFacilities.has(facility)) {
+    state.selectedFacilities.delete(facility);
+  } else {
+    state.selectedFacilities.add(facility);
+  }
+  renderFacilityFilter();
+  render({
+    watchState: els.watchState.textContent,
+    last: els.lastUpdate.textContent,
+    range: els.watchRange.textContent,
+    canceling: state.rows.canceling,
+    available: state.rows.available,
+    history: state.rows.history
+  });
+});
 
 start();
