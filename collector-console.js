@@ -495,7 +495,7 @@ ${rows.historyLines.length
     // 중지 / 기록 초기화
     // =========================================================
 
-    async function reportToDashboard(activeRecords, phase, totalRequests) {
+    async function reportToDashboard(activeRecords, phase, totalRequests, failures) {
         try {
             const active = activeRecords.map(record => ({
                 id: record.id,
@@ -517,7 +517,7 @@ ${rows.historyLines.length
                     count,
                     totalRequests,
                     completedRequests: totalRequests,
-                    failures: 0,
+                    failures,
                     monitorError: "",
                     source: "campingkorea-console",
                     range: `${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}`,
@@ -570,6 +570,7 @@ ${rows.historyLines.length
 
         const promises = [];
         const activeRecords = [];
+        let failures = 0;
 
         for (
             let day = 1;
@@ -583,60 +584,90 @@ ${rows.historyLines.length
                 getFormattedDate(day + 1);
 
             CATEGORIES.forEach(cat => {
-                const request = $.ajax({
-                    url: CONFIG.url,
-                    type: "POST",
-                    dataType: "json",
-                    cache: false,
+                const request = new Promise(resolve => {
+                    $.ajax({
+                        url: CONFIG.url,
+                        type: "POST",
+                        dataType: "json",
+                        cache: false,
 
-                    data: {
-                        trrsrtCode:
-                            CONFIG.trrsrtCode,
+                        data: {
+                            trrsrtCode:
+                                CONFIG.trrsrtCode,
 
-                        fcltyCode:
-                            cat.code,
+                            fcltyCode:
+                                cat.code,
 
-                        resveNoCode:
-                            CONFIG.resveNoCode,
+                            resveNoCode:
+                                CONFIG.resveNoCode,
 
-                        resveBeginDe:
-                            checkBeginDe,
+                            resveBeginDe:
+                                checkBeginDe,
 
-                        resveEndDe:
-                            checkEndDe
-                    },
+                            resveEndDe:
+                                checkEndDe
+                        },
 
-                    success: function (res) {
-                        const list =
-                            res?.value?.childFcltyList;
+                        success: function (res) {
+                            const list =
+                                res?.value?.childFcltyList;
 
-                        if (!Array.isArray(list)) {
-                            return;
-                        }
-
-                        list.forEach(x => {
-                            if (
-                                !x ||
-                                x.canclYn !== "N"
-                            ) {
+                            if (!Array.isArray(list)) {
                                 return;
                             }
 
-                            const room =
-                                makeRoomText(cat, x);
+                            list.forEach(x => {
+                                if (
+                                    !x ||
+                                    x.canclYn !== "N"
+                                ) {
+                                    return;
+                                }
 
-                            const key = [
-                                checkBeginDe,
-                                cat.code,
-                                x.fcltyCode ||
-                                x.fcltyNm ||
-                                ""
-                            ].join("|");
+                                const room =
+                                    makeRoomText(cat, x);
 
-                            if (
-                                !cancelDetectedTimes[key]
-                            ) {
-                                cancelDetectedTimes[key] = {
+                                const key = [
+                                    checkBeginDe,
+                                    cat.code,
+                                    x.fcltyCode ||
+                                    x.fcltyNm ||
+                                    ""
+                                ].join("|");
+
+                                if (
+                                    !cancelDetectedTimes[key]
+                                ) {
+                                    cancelDetectedTimes[key] = {
+                                        date:
+                                            `[${checkBeginDe}]`,
+
+                                        category:
+                                            cat.name,
+
+                                        room,
+
+                                        detected:
+                                            nowText()
+                                    };
+
+                                    beep();
+                                } else {
+                                    cancelDetectedTimes[key].room =
+                                        room;
+                                }
+
+                                const detected =
+                                    cancelDetectedTimes[key]
+                                        .detected;
+
+                                activeRecords.push({
+                                    id:
+                                        key,
+
+                                    rawDate:
+                                        checkBeginDe,
+
                                     date:
                                         `[${checkBeginDe}]`,
 
@@ -645,65 +676,42 @@ ${rows.historyLines.length
 
                                     room,
 
-                                    detected:
-                                        nowText()
-                                };
+                                    detected,
 
-                                beep();
-                            } else {
-                                cancelDetectedTimes[key].room =
-                                    room;
-                            }
+                                    expected:
+                                        addTwoHours(detected),
 
-                            const detected =
-                                cancelDetectedTimes[key]
-                                    .detected;
+                                    fcltyCode:
+                                        x.fcltyCode || "",
 
-                            activeRecords.push({
-                                id:
-                                    key,
+                                    fcltyTyCode:
+                                        x.fcltyTyCode || "",
 
-                                rawDate:
-                                    checkBeginDe,
+                                    resveNoCode:
+                                        x.resveNoCode || CONFIG.resveNoCode,
 
-                                date:
-                                    `[${checkBeginDe}]`,
-
-                                category:
-                                    cat.name,
-
-                                room,
-
-                                detected,
-
-                                expected:
-                                    addTwoHours(detected),
-
-                                fcltyCode:
-                                    x.fcltyCode || "",
-
-                                fcltyTyCode:
-                                    x.fcltyTyCode || "",
-
-                                resveNoCode:
-                                    x.resveNoCode || CONFIG.resveNoCode,
-
-                                detectedAt:
-                                    new Date().toISOString()
+                                    detectedAt:
+                                        new Date().toISOString()
+                                });
                             });
-                        });
-                    },
+                        },
 
-                    error: function () {}
+                        error: function () {
+                            failures++;
+                        },
+
+                        complete: function () {
+                            resolve();
+                        }
+                    });
                 });
 
                 promises.push(request);
             });
         }
 
-        $.when
-            .apply($, promises)
-            .always(function () {
+        Promise.all(promises)
+            .then(function () {
                 scanEndTime =
                     new Date();
 
@@ -738,7 +746,8 @@ ${rows.historyLines.length
                 void reportToDashboard(
                     activeRecords,
                     "finished",
-                    promises.length
+                    promises.length,
+                    failures
                 );
 
                 isProcessing = false;
