@@ -285,22 +285,22 @@ td {
 
 .history-panel th:nth-child(1),
 .history-panel td:nth-child(1) {
-  width: 10%;
+  width: 13%;
 }
 
 .history-panel th:nth-child(2),
 .history-panel td:nth-child(2) {
-  width: 14%;
+  width: 24%;
 }
 
 .history-panel th:nth-child(3),
 .history-panel td:nth-child(3) {
-  width: 19%;
+  width: 24%;
 }
 
 .history-panel th:nth-child(4),
 .history-panel td:nth-child(4) {
-  width: 11%;
+  width: 16%;
 }
 
 .history-panel th:nth-child(5),
@@ -308,12 +308,7 @@ td {
   width: 23%;
 }
 
-.history-panel th:nth-child(6),
-.history-panel td:nth-child(6) {
-  width: 23%;
-}
-
-.history-panel td:nth-child(3) {
+.history-panel td:nth-child(5) {
   white-space: normal;
   line-height: 1.15;
   word-break: keep-all;
@@ -448,32 +443,27 @@ td {
 
   .history-panel th:nth-child(1),
   .history-panel td:nth-child(1) {
-    width: 10%;
+    width: 13%;
   }
 
   .history-panel th:nth-child(2),
   .history-panel td:nth-child(2) {
-    width: 13%;
+    width: 23%;
   }
 
   .history-panel th:nth-child(3),
   .history-panel td:nth-child(3) {
-    width: 21%;
+    width: 24%;
   }
 
   .history-panel th:nth-child(4),
   .history-panel td:nth-child(4) {
-    width: 11%;
+    width: 16%;
   }
 
   .history-panel th:nth-child(5),
   .history-panel td:nth-child(5) {
-    width: 22%;
-  }
-
-  .history-panel th:nth-child(6),
-  .history-panel td:nth-child(6) {
-    width: 23%;
+    width: 24%;
   }
 
   .history-panel th,
@@ -481,14 +471,13 @@ td {
     font-size: 11.5px;
   }
 
-  .history-panel td:nth-child(3) {
+  .history-panel td:nth-child(5) {
     font-size: 10.5px;
     line-height: 1.15;
   }
 
-  .history-panel td:nth-child(2),
   .history-panel td:nth-child(3),
-  .history-panel td:nth-child(6) {
+  .history-panel td:nth-child(5) {
     padding-left: 1px;
     padding-right: 1px;
   }
