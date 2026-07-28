@@ -10,6 +10,7 @@ const PUBLIC_DIR = join(process.cwd(), "public");
 const DATA_DIR = join(process.cwd(), ".data");
 const STATE_FILE = join(DATA_DIR, "state.json");
 const REMOTE_REFERENCE_URL = "https://mangsang-alarm-dashboard.onrender.com/api/reference";
+const REMOTE_REFERENCE_PAGE_URL = "https://mangsang-alarm-dashboard.onrender.com/";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -85,6 +86,24 @@ function liveRowCount(payload) {
   );
 }
 
+function htmlToText(html) {
+  return String(html || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "\n")
+    .replace(/<style[\s\S]*?<\/style>/gi, "\n")
+    .replace(/<\/(tr|p|div|section|article|header|footer|h[1-6]|li)>/gi, "\n")
+    .replace(/<\/(td|th)>/gi, "\t")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\t+\s*\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 async function remoteReference() {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 3500);
@@ -95,10 +114,36 @@ async function remoteReference() {
       signal: controller.signal
     });
 
-    if (!response.ok) return null;
-    return await response.json();
+    if (response.ok) return await response.json();
+
+    const pageResponse = await fetch(`${REMOTE_REFERENCE_PAGE_URL}?ts=${Date.now()}`, {
+      cache: "no-store",
+      signal: controller.signal
+    });
+
+    if (!pageResponse.ok) return null;
+
+    return {
+      ok: true,
+      fetchedAt: new Date().toISOString(),
+      text: htmlToText(await pageResponse.text())
+    };
   } catch {
-    return null;
+    try {
+      const pageResponse = await fetch(`${REMOTE_REFERENCE_PAGE_URL}?ts=${Date.now()}`, {
+        cache: "no-store"
+      });
+
+      if (!pageResponse.ok) return null;
+
+      return {
+        ok: true,
+        fetchedAt: new Date().toISOString(),
+        text: htmlToText(await pageResponse.text())
+      };
+    } catch {
+      return null;
+    }
   } finally {
     clearTimeout(timer);
   }
