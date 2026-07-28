@@ -3,7 +3,11 @@ window.stopWatchAll && stopWatchAll();
 (function () {
     "use strict";
 
-    const DASHBOARD_URL = "https://go-mangsang.onrender.com";
+    const DASHBOARD_URLS = [
+        "https://go-mangsang.onrender.com",
+        "https://mangsang-alarm-dashboard.onrender.com"
+    ];
+    const DASHBOARD_URL = DASHBOARD_URLS[0];
 
     const CATEGORIES = [
         { code: "1300", name: "▶든바다", resveNoCodes: ["ME", "MC", "MA", "MG", "MD", "MB"] },
@@ -536,27 +540,46 @@ ${rows.historyLines.length
                 detectedAt: record.detectedAt
             }));
 
-            const response = await fetch(`${DASHBOARD_URL}/api/report`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    phase,
-                    refreshedAt: new Date().toISOString(),
-                    count,
-                    totalRequests,
-                    completedRequests: totalRequests,
-                    failures,
-                    monitorError: "",
-                    source: "campingkorea-console",
-                    range: `${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}`,
-                    intervalSec: CONFIG.intervalSec,
-                    active,
-                    available
-                })
+            const body = JSON.stringify({
+                phase,
+                refreshedAt: new Date().toISOString(),
+                count,
+                totalRequests,
+                completedRequests: totalRequests,
+                failures,
+                monitorError: "",
+                source: "campingkorea-console",
+                range: `${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}`,
+                intervalSec: CONFIG.intervalSec,
+                active,
+                available
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            const results = await Promise.allSettled(DASHBOARD_URLS.map(async url => {
+                const response = await fetch(`${url}/api/report`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body
+                });
+
+                if (!response.ok) {
+                    throw new Error(`${url} HTTP ${response.status}`);
+                }
+
+                return url;
+            }));
+
+            const sent = results.filter(result => result.status === "fulfilled").length;
+            const failed = results
+                .filter(result => result.status === "rejected")
+                .map(result => result.reason?.message || String(result.reason));
+
+            console.log(
+                `대시보드 전송: 성공 ${sent}/${DASHBOARD_URLS.length}, 취소 ${active.length}건, 예약가능 ${available.length}건, 실패요청 ${failures}건`
+            );
+
+            if (failed.length) {
+                console.warn("대시보드 전송 실패:", failed.join(" / "));
             }
         } catch (error) {
             console.warn("망상그곳 전송 실패:", error.message);
