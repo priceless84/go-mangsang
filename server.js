@@ -128,8 +128,9 @@ function listFromPayload(payload, keys) {
 }
 
 function eventStatus(previousMap, currentMap, item) {
-  const previous = previousMap.has(item.id);
-  const current = currentMap.has(item.id);
+  const key = itemSignalKey(item);
+  const previous = previousMap.has(key);
+  const current = currentMap.has(key);
   if (!previous && current) return "발생";
   if (previous && !current) return "종료 → 목록없음";
   return null;
@@ -143,9 +144,23 @@ function itemSignalKey(item) {
   ].join("|");
 }
 
+function preserveFirstDetectedAt(currentItems, previousItems) {
+  const byId = new Map(previousItems.map(item => [item.id || itemKey(item), item]));
+  const bySignal = new Map(previousItems.map(item => [itemSignalKey(item), item]));
+
+  return currentItems.map(item => {
+    const previous = byId.get(item.id || itemKey(item)) || bySignal.get(itemSignalKey(item));
+    if (!previous?.detected_at) return item;
+    return {
+      ...item,
+      detected_at: previous.detected_at
+    };
+  });
+}
+
 function buildEvents(previousItems, currentItems, eventType, now, endedState) {
-  const previousMap = new Map(previousItems.map(item => [item.id || itemKey(item), item]));
-  const currentMap = new Map(currentItems.map(item => [item.id || itemKey(item), item]));
+  const previousMap = new Map(previousItems.map(item => [itemSignalKey(item), item]));
+  const currentMap = new Map(currentItems.map(item => [itemSignalKey(item), item]));
   const events = [];
 
   for (const item of currentItems) {
@@ -163,8 +178,7 @@ function buildEvents(previousItems, currentItems, eventType, now, endedState) {
   }
 
   for (const item of previousItems) {
-    const id = item.id || itemKey(item);
-    if (!currentMap.has(id)) {
+    if (!currentMap.has(itemSignalKey(item))) {
       events.push({
         received_at: now,
         event_type: eventType,
@@ -208,8 +222,8 @@ async function report(req, res) {
     incomingAvailable.length > 0 ||
     (isFinished && !hasFailures) ||
     (!state.heartbeat && hasAnyIncomingList);
-  const active = shouldReplaceActive ? incomingActive : previousItems;
-  const available = shouldReplaceAvailable ? incomingAvailable : previousAvailable;
+  const active = shouldReplaceActive ? preserveFirstDetectedAt(incomingActive, previousItems) : previousItems;
+  const available = shouldReplaceAvailable ? preserveFirstDetectedAt(incomingAvailable, previousAvailable) : previousAvailable;
   const events = [];
   const activeKeys = new Set(active.map(itemSignalKey));
   const availableKeys = new Set(available.map(itemSignalKey));
