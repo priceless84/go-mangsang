@@ -82,7 +82,7 @@ function parseTableRows(lines) {
 }
 
 function sectionLines(lines, startLabel, endLabel) {
-  const start = lines.findIndex(line => normalizeLine(line) === startLabel);
+  const start = lines.findIndex(line => normalizeLine(line).startsWith(startLabel));
   if (start < 0) return [];
   const end = lines.findIndex((line, index) => index > start && normalizeLine(line).startsWith(endLabel));
   return lines.slice(start + 1, end > start ? end : undefined);
