@@ -8,6 +8,7 @@ const state = {
     history: []
   },
   timer: null,
+  clockTimer: null,
   selectedFacilities: new Set(FACILITIES)
 };
 
@@ -349,7 +350,6 @@ function render(data) {
 }
 
 async function refresh() {
-  els.nowTime.textContent = clock();
   try {
     const response = await fetch(`/api/reference?ts=${Date.now()}`, { cache: "no-store" });
     const payload = await response.json();
@@ -360,8 +360,14 @@ async function refresh() {
   }
 }
 
+function updateNowTime() {
+  els.nowTime.textContent = clock();
+}
+
 function start() {
   renderFacilityFilter();
+  updateNowTime();
+  state.clockTimer = setInterval(updateNowTime, 1000);
   refresh();
   state.timer = setInterval(refresh, REFRESH_MS);
 }
