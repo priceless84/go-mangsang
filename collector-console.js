@@ -331,6 +331,24 @@ window.stopWatchAll && stopWatchAll();
             : roomName;
     }
 
+    function isCancelingItem(x) {
+        return x && x.canclYn === "N";
+    }
+
+    function isAvailableItem(x) {
+        if (!x) {
+            return false;
+        }
+
+        return (
+            x.resveAt === "Y" &&
+            x.resveYn === "Y" &&
+            x.preocpcYn === "Y" &&
+            x.imprtyYn === "N" &&
+            x.canclYn === "Y"
+        );
+    }
+
     // =========================================================
     // 알림음
     // =========================================================
@@ -495,9 +513,19 @@ ${rows.historyLines.length
     // 중지 / 기록 초기화
     // =========================================================
 
-    async function reportToDashboard(activeRecords, phase, totalRequests, failures) {
+    async function reportToDashboard(activeRecords, availableRecords, phase, totalRequests, failures) {
         try {
             const active = activeRecords.map(record => ({
+                id: record.id,
+                date: record.rawDate,
+                category: record.category,
+                roomName: record.room,
+                fcltyCode: record.fcltyCode,
+                fcltyTyCode: record.fcltyTyCode,
+                resveNoCode: record.resveNoCode,
+                detectedAt: record.detectedAt
+            }));
+            const available = availableRecords.map(record => ({
                 id: record.id,
                 date: record.rawDate,
                 category: record.category,
@@ -523,7 +551,7 @@ ${rows.historyLines.length
                     range: `${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}`,
                     intervalSec: CONFIG.intervalSec,
                     active,
-                    available: []
+                    available
                 })
             });
 
@@ -570,6 +598,7 @@ ${rows.historyLines.length
 
         const promises = [];
         const activeRecords = [];
+        const availableRecords = [];
         let failures = 0;
 
         for (
@@ -617,13 +646,6 @@ ${rows.historyLines.length
                             }
 
                             list.forEach(x => {
-                                if (
-                                    !x ||
-                                    x.canclYn !== "N"
-                                ) {
-                                    return;
-                                }
-
                                 const room =
                                     makeRoomText(cat, x);
 
@@ -634,6 +656,40 @@ ${rows.historyLines.length
                                     x.fcltyNm ||
                                     ""
                                 ].join("|");
+
+                                if (isAvailableItem(x)) {
+                                    availableRecords.push({
+                                        id:
+                                            key,
+
+                                        rawDate:
+                                            checkBeginDe,
+
+                                        date:
+                                            `[${checkBeginDe}]`,
+
+                                        category:
+                                            cat.name,
+
+                                        room,
+
+                                        fcltyCode:
+                                            x.fcltyCode || "",
+
+                                        fcltyTyCode:
+                                            x.fcltyTyCode || "",
+
+                                        resveNoCode:
+                                            x.resveNoCode || CONFIG.resveNoCode,
+
+                                        detectedAt:
+                                            new Date().toISOString()
+                                    });
+                                }
+
+                                if (!isCancelingItem(x)) {
+                                    return;
+                                }
 
                                 if (
                                     !cancelDetectedTimes[key]
@@ -745,6 +801,7 @@ ${rows.historyLines.length
 
                 void reportToDashboard(
                     activeRecords,
+                    availableRecords,
                     "finished",
                     promises.length,
                     failures
