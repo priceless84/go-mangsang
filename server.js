@@ -9,6 +9,7 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = join(process.cwd(), "public");
 const DATA_DIR = join(process.cwd(), ".data");
 const STATE_FILE = join(DATA_DIR, "state.json");
+const CANCEL_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -158,6 +159,22 @@ function preserveFirstDetectedAt(currentItems, previousItems) {
   });
 }
 
+function cancelExpired(item, now) {
+  const detectedAt = new Date(item.detected_at || 0).getTime();
+  const checkedAt = new Date(now).getTime();
+
+  if (!Number.isFinite(detectedAt) || !Number.isFinite(checkedAt)) return false;
+  return checkedAt - detectedAt >= CANCEL_WINDOW_MS;
+}
+
+function visibleCancelingItems(items, availableItems, now) {
+  const availableKeys = new Set(availableItems.map(itemSignalKey));
+
+  return items.filter(item => (
+    !cancelExpired(item, now) || availableKeys.has(itemSignalKey(item))
+  ));
+}
+
 function buildEvents(previousItems, currentItems, eventType, now, endedState) {
   const previousMap = new Map(previousItems.map(item => [itemSignalKey(item), item]));
   const currentMap = new Map(currentItems.map(item => [itemSignalKey(item), item]));
@@ -222,15 +239,18 @@ async function report(req, res) {
     incomingAvailable.length > 0 ||
     (isFinished && !hasFailures) ||
     (!state.heartbeat && hasAnyIncomingList);
-  const active = shouldReplaceActive ? preserveFirstDetectedAt(incomingActive, previousItems) : previousItems;
   const available = shouldReplaceAvailable ? preserveFirstDetectedAt(incomingAvailable, previousAvailable) : previousAvailable;
+  const nextActive = shouldReplaceActive ? preserveFirstDetectedAt(incomingActive, previousItems) : previousItems;
+  const active = visibleCancelingItems(nextActive, available, now);
   const events = [];
   const activeKeys = new Set(active.map(itemSignalKey));
   const availableKeys = new Set(available.map(itemSignalKey));
 
   if (shouldReplaceActive) {
     events.push(...buildEvents(previousItems, active, "canceling", now, item =>
-      availableKeys.has(itemSignalKey(item)) ? "종료 → 예약가능" : "종료 → 목록없음"
+      availableKeys.has(itemSignalKey(item))
+        ? "종료 → 예약가능"
+        : cancelExpired(item, now) ? "종료 → 예약중" : "종료 → 목록없음"
     ));
   }
 
