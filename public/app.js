@@ -145,7 +145,7 @@ function localTime(value) {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return `${shortDate(value)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function historyTime(value) {
