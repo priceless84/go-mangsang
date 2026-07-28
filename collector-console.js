@@ -21,7 +21,10 @@ window.stopWatchAll && stopWatchAll();
         trrsrtCode: "1000",
         resveNoCode: "MA",
         maxDays: 40,
-        intervalSec: 5
+        intervalSec: 5,
+        concurrency: 6,
+        requestGapMs: 80,
+        timeoutMs: 15000
     };
 
     // =========================================================
@@ -620,6 +623,7 @@ ${rows.historyLines.length
         scanStartTime = new Date();
 
         const promises = [];
+        const jobs = [];
         const activeRecords = [];
         const availableRecords = [];
         let failures = 0;
@@ -642,169 +646,215 @@ ${rows.historyLines.length
                         : [CONFIG.resveNoCode];
 
                 resveNoCodes.forEach(resveNoCode => {
-                const request = new Promise(resolve => {
-                    $.ajax({
-                        url: CONFIG.url,
-                        type: "POST",
-                        dataType: "json",
-                        cache: false,
-
-                        data: {
-                            trrsrtCode:
-                                CONFIG.trrsrtCode,
-
-                            fcltyCode:
-                                cat.code,
-
-                            resveNoCode:
-                                resveNoCode,
-
-                            resveBeginDe:
-                                checkBeginDe,
-
-                            resveEndDe:
-                                checkEndDe
-                        },
-
-                        success: function (res) {
-                            const list =
-                                res?.value?.childFcltyList;
-
-                            if (!Array.isArray(list)) {
-                                return;
-                            }
-
-                            list.forEach(x => {
-                                const meta =
-                                    getRoomMeta(cat, x, resveNoCode);
-
-                                if (ROOM_META[cat.code] && !meta) {
-                                    return;
-                                }
-
-                                const room =
-                                    makeRoomText(cat, x, meta);
-
-                                const key = [
-                                    checkBeginDe,
-                                    cat.code,
-                                    resveNoCode,
-                                    x.fcltyCode ||
-                                    x.fcltyNm ||
-                                    ""
-                                ].join("|");
-
-                                if (isAvailableItem(x)) {
-                                    availableRecords.push({
-                                        id:
-                                            key,
-
-                                        rawDate:
-                                            checkBeginDe,
-
-                                        date:
-                                            `[${checkBeginDe}]`,
-
-                                        category:
-                                            cat.name,
-
-                                        room,
-
-                                        fcltyCode:
-                                            x.fcltyCode || "",
-
-                                        fcltyTyCode:
-                                            x.fcltyTyCode || meta?.fcltyTyCode || "",
-
-                                        resveNoCode:
-                                            x.resveNoCode || meta?.resveNoCode || resveNoCode,
-
-                                        detectedAt:
-                                            new Date().toISOString()
-                                    });
-                                }
-
-                                if (!isCancelingItem(x)) {
-                                    return;
-                                }
-
-                                if (
-                                    !cancelDetectedTimes[key]
-                                ) {
-                                    cancelDetectedTimes[key] = {
-                                        date:
-                                            `[${checkBeginDe}]`,
-
-                                        category:
-                                            cat.name,
-
-                                        room,
-
-                                        detected:
-                                            nowText()
-                                    };
-
-                                    beep();
-                                } else {
-                                    cancelDetectedTimes[key].room =
-                                        room;
-                                }
-
-                                const detected =
-                                    cancelDetectedTimes[key]
-                                        .detected;
-
-                                activeRecords.push({
-                                    id:
-                                        key,
-
-                                    rawDate:
-                                        checkBeginDe,
-
-                                    date:
-                                        `[${checkBeginDe}]`,
-
-                                    category:
-                                        cat.name,
-
-                                    room,
-
-                                    detected,
-
-                                    expected:
-                                        addTwoHours(detected),
-
-                                    fcltyCode:
-                                        x.fcltyCode || "",
-
-                                    fcltyTyCode:
-                                        x.fcltyTyCode || meta?.fcltyTyCode || "",
-
-                                    resveNoCode:
-                                        x.resveNoCode || meta?.resveNoCode || resveNoCode,
-
-                                    detectedAt:
-                                        new Date().toISOString()
-                                });
-                            });
-                        },
-
-                        error: function () {
-                            failures++;
-                        },
-
-                        complete: function () {
-                            resolve();
-                        }
+                    jobs.push({
+                        cat,
+                        resveNoCode,
+                        checkBeginDe,
+                        checkEndDe
                     });
-                });
-
-                promises.push(request);
                 });
             });
         }
 
-        Promise.all(promises)
+        function handleItem(job, x) {
+            const codeMeta =
+                ROOM_META[job.cat.code]?.[String(x?.fcltyCode || "")] || null;
+
+            if (
+                codeMeta &&
+                codeMeta.resveNoCode !== job.resveNoCode
+            ) {
+                return;
+            }
+
+            const meta =
+                getRoomMeta(job.cat, x, job.resveNoCode) || codeMeta;
+
+            const room =
+                makeRoomText(job.cat, x, meta);
+
+            const key = [
+                job.checkBeginDe,
+                job.cat.code,
+                job.resveNoCode,
+                x.fcltyCode ||
+                x.fcltyNm ||
+                ""
+            ].join("|");
+
+            if (isAvailableItem(x)) {
+                availableRecords.push({
+                    id:
+                        key,
+
+                    rawDate:
+                        job.checkBeginDe,
+
+                    date:
+                        `[${job.checkBeginDe}]`,
+
+                    category:
+                        job.cat.name,
+
+                    room,
+
+                    fcltyCode:
+                        x.fcltyCode || meta?.fcltyCode || "",
+
+                    fcltyTyCode:
+                        x.fcltyTyCode || meta?.fcltyTyCode || "",
+
+                    resveNoCode:
+                        x.resveNoCode || meta?.resveNoCode || job.resveNoCode,
+
+                    detectedAt:
+                        new Date().toISOString()
+                });
+            }
+
+            if (!isCancelingItem(x)) {
+                return;
+            }
+
+            if (
+                !cancelDetectedTimes[key]
+            ) {
+                cancelDetectedTimes[key] = {
+                    date:
+                        `[${job.checkBeginDe}]`,
+
+                    category:
+                        job.cat.name,
+
+                    room,
+
+                    detected:
+                        nowText()
+                };
+
+                beep();
+            } else {
+                cancelDetectedTimes[key].room =
+                    room;
+            }
+
+            const detected =
+                cancelDetectedTimes[key]
+                    .detected;
+
+            activeRecords.push({
+                id:
+                    key,
+
+                rawDate:
+                    job.checkBeginDe,
+
+                date:
+                    `[${job.checkBeginDe}]`,
+
+                category:
+                    job.cat.name,
+
+                room,
+
+                detected,
+
+                expected:
+                    addTwoHours(detected),
+
+                fcltyCode:
+                    x.fcltyCode || meta?.fcltyCode || "",
+
+                fcltyTyCode:
+                    x.fcltyTyCode || meta?.fcltyTyCode || "",
+
+                resveNoCode:
+                    x.resveNoCode || meta?.resveNoCode || job.resveNoCode,
+
+                detectedAt:
+                    new Date().toISOString()
+            });
+        }
+
+        function requestJob(job) {
+            return new Promise(resolve => {
+                $.ajax({
+                    url: CONFIG.url,
+                    type: "POST",
+                    dataType: "json",
+                    cache: false,
+                    timeout: CONFIG.timeoutMs,
+
+                    data: {
+                        trrsrtCode:
+                            CONFIG.trrsrtCode,
+
+                        fcltyCode:
+                            job.cat.code,
+
+                        resveNoCode:
+                            job.resveNoCode,
+
+                        resveBeginDe:
+                            job.checkBeginDe,
+
+                        resveEndDe:
+                            job.checkEndDe
+                    },
+
+                    success: function (res) {
+                        const list =
+                            res?.value?.childFcltyList;
+
+                        if (!Array.isArray(list)) {
+                            return;
+                        }
+
+                        list.forEach(x => {
+                            handleItem(job, x);
+                        });
+                    },
+
+                    error: function () {
+                        failures++;
+                    },
+
+                    complete: function () {
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        async function runPool() {
+            let cursor = 0;
+
+            async function worker() {
+                while (cursor < jobs.length) {
+                    const index = cursor++;
+                    promises.push(requestJob(jobs[index]));
+                    await promises[promises.length - 1];
+
+                    if (cursor < jobs.length) {
+                        await new Promise(resolve =>
+                            setTimeout(resolve, CONFIG.requestGapMs)
+                        );
+                    }
+                }
+            }
+
+            await Promise.all(
+                Array.from(
+                    {
+                        length:
+                            Math.min(CONFIG.concurrency, jobs.length)
+                    },
+                    worker
+                )
+            );
+        }
+
+        runPool()
             .then(function () {
                 scanEndTime =
                     new Date();
@@ -834,14 +884,14 @@ ${rows.historyLines.length
 
                 showScreen(
                     activeRecords,
-                    promises.length
+                    jobs.length
                 );
 
                 void reportToDashboard(
                     activeRecords,
                     availableRecords,
                     "finished",
-                    promises.length,
+                    jobs.length,
                     failures
                 );
 
