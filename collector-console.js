@@ -20,7 +20,7 @@ window.stopWatchAll && stopWatchAll();
         url: "/user/reservation/ND_selectChildFcltyList.do",
         trrsrtCode: "1000",
         resveNoCode: "MA",
-        maxDays: 40,
+        maxDays: 30,
         intervalSec: 5,
         concurrency: 6,
         requestGapMs: 80,
@@ -505,10 +505,10 @@ window.stopWatchAll && stopWatchAll();
 
         console.log(`
 ========================================================
-⚡ 망상리조트 4구역×40일 취소 모니터링
-⚡ 망상리조트 [4개 구역 X 40일 전체] 일괄 병렬 모니터링
+⚡ 망상리조트 4구역×30일 취소 모니터링
+⚡ 망상리조트 [4개 구역 X 30일 전체] 일괄 병렬 모니터링
 대시보드 : ${DASHBOARD_URL}
-감시 범위 : ${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}
+감시 범위 : ${getFormattedDate(0)} ~ ${getFormattedDate(CONFIG.maxDays - 1)}
 동시 요청수 : 총 ${totalRequests}개 조합 / 조회 횟수 : ${count}회차
 현재 시간 : ${nowText()}
 이전 갱신 : ${previousRefreshTime}
@@ -572,7 +572,7 @@ ${rows.historyLines.length
                 failures,
                 monitorError: "",
                 source: "campingkorea-console",
-                range: `${getFormattedDate(1)} ~ ${getFormattedDate(CONFIG.maxDays)}`,
+                range: `${getFormattedDate(0)} ~ ${getFormattedDate(CONFIG.maxDays - 1)}`,
                 intervalSec: CONFIG.intervalSec,
                 active,
                 available
@@ -649,7 +649,7 @@ ${rows.historyLines.length
         let failures = 0;
 
         for (
-            let day = 1;
+            let day = 0;
             day < CONFIG.maxDays;
             day++
         ) {
