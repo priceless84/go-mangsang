@@ -1,6 +1,9 @@
 const FACILITIES = ["든바다", "난바다", "허허바다", "자동차캠핑장"];
 const REFRESH_MS = 5000;
-const DATA_SOURCES = ["/api/reference"];
+const DATA_SOURCES = [
+  "/api/reference",
+  "https://mangsang-alarm-dashboard.onrender.com/api/reference"
+];
 
 const state = {
   rows: {
