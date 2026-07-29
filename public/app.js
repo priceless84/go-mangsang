@@ -130,7 +130,13 @@ function parseHistorySection(lines) {
 function parseDashboard(text) {
   const rawLines = String(text || "").split(/\n+/);
   const lines = rawLines.map(normalizeLine).filter(Boolean);
-  const history = parseHistorySection(rawLines);
+  const history = parseHistorySection(rawLines).map(row => ({
+    ...row,
+    time: historyTime(row.time),
+    type: row.type === "취소진행중" ? "취소중" : row.type,
+    status: compactStatus(row.status),
+    date: shortDate(row.date)
+  }));
   const watchState = valueAfter(lines, "감시 상태");
 
   return {
@@ -166,6 +172,8 @@ function localTime(value) {
 
 function historyTime(value) {
   if (!value) return "-";
+  const korean = String(value).match(/(\d{1,2})시\s*(\d{1,2})분/);
+  if (korean) return `${pad(korean[1])}:${pad(korean[2])}`;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -221,7 +229,11 @@ function rangeSummary(value, dates) {
 }
 
 function compactStatus(value) {
-  return String(value || "").replace(/\s*→\s*/g, "→").replace(/\s+/g, "");
+  const text = String(value || "").replace(/\s*→\s*/g, "→").replace(/\s+/g, "");
+  if (text.includes("종료→예약가능")) return "가능종료";
+  if (text.includes("종료→예약마감")) return "마감종료";
+  if (text.includes("취소") && text.includes("진행")) return "진행중";
+  return text;
 }
 
 function normalizeFacilityName(value) {
@@ -419,7 +431,12 @@ function render(data) {
 async function refresh() {
   try {
     const payload = await loadPayload();
-    render(payload.state ? parseStatePayload(payload) : parseDashboard(payload.text || ""));
+    const parsedText = payload.text ? parseDashboard(payload.text) : null;
+    if (parsedText && (parsedText.canceling.length || parsedText.available.length || parsedText.history.length)) {
+      render(parsedText);
+    } else {
+      render(payload.state ? parseStatePayload(payload) : parseDashboard(payload.text || ""));
+    }
   } catch (error) {
     els.watchState.textContent = "연결 확인 필요";
   }
