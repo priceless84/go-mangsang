@@ -212,19 +212,6 @@ function createRenderMonitor({ applyReportPayload }) {
     const errors = [];
 
     try {
-      await applyReportPayload({
-        phase: "running",
-        refreshedAt: new Date().toISOString(),
-        count: cycle + 1,
-        totalRequests: jobs.length,
-        completedRequests: 0,
-        failures: 0,
-        monitorError: "scan started",
-        source: "render-monitor",
-        range: `${getFormattedDate(0)} ~ ${getFormattedDate(CONFIG.maxDays - 1)}`,
-        intervalSec: CONFIG.intervalSec
-      });
-
       await runPool(jobs, async job => {
         try {
           const list = await requestJob(job);
