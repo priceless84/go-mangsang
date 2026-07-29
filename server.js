@@ -366,7 +366,7 @@ createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/monitor-status") {
+    if (req.method === "GET" && url.pathname === "/healthz") {
       json(res, 200, {
         ok: true,
         enabled: process.env.RENDER_MONITOR !== "false",
