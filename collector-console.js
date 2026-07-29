@@ -338,8 +338,28 @@ window.stopWatchAll && stopWatchAll();
             : roomName;
     }
 
+    function normalizeFlag(value) {
+        return String(value ?? "")
+            .trim()
+            .toUpperCase();
+    }
+
+    function isYes(value) {
+        return (
+            value === true ||
+            ["Y", "YES", "TRUE", "1"].includes(normalizeFlag(value))
+        );
+    }
+
+    function isNo(value) {
+        return (
+            value === false ||
+            ["N", "NO", "FALSE", "0"].includes(normalizeFlag(value))
+        );
+    }
+
     function isCancelingItem(x) {
-        return x && x.canclYn === "N";
+        return x && isNo(x.canclYn);
     }
 
     function isAvailableItem(x) {
@@ -348,11 +368,11 @@ window.stopWatchAll && stopWatchAll();
         }
 
         return (
-            x.resveAt === "Y" &&
-            x.resveYn === "Y" &&
-            x.preocpcYn === "Y" &&
-            x.imprtyYn === "N" &&
-            x.canclYn === "Y"
+            isYes(x.resveAt) &&
+            isYes(x.resveYn) &&
+            isYes(x.preocpcYn) &&
+            isNo(x.imprtyYn) &&
+            isYes(x.canclYn)
         );
     }
 
