@@ -9,9 +9,6 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = join(process.cwd(), "public");
 const DATA_DIR = join(process.cwd(), ".data");
 const STATE_FILE = join(DATA_DIR, "state.json");
-const REFERENCE_SOURCES = [
-  "https://mangsang-alarm-dashboard.onrender.com/api/state"
-];
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -86,68 +83,12 @@ function heartbeatScore(candidateState) {
   );
 }
 
-async function fetchReferencePayload(url) {
-  if (typeof fetch !== "function") return null;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 3000);
-
-  try {
-    const joiner = url.includes("?") ? "&" : "?";
-    const response = await fetch(`${url}${joiner}ts=${Date.now()}`, {
-      cache: "no-store",
-      signal: controller.signal
-    });
-
-    if (!response.ok) return null;
-
-    const payload = await response.json();
-
-    if (payload?.state) return payload;
-
-    if (payload?.heartbeat || payload?.events) {
-      return {
-        ok: true,
-        state: {
-          heartbeat: payload.heartbeat || null,
-          events: Array.isArray(payload.events) ? payload.events : []
-        }
-      };
-    }
-
-    return null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 async function referencePayload() {
-  const localPayload = {
+  return {
     ok: true,
     fetchedAt: new Date().toISOString(),
     state,
     source: "local"
-  };
-
-  const remotePayloads = (
-    await Promise.all(REFERENCE_SOURCES.map(fetchReferencePayload))
-  )
-    .filter(Boolean)
-    .map(payload => ({
-      ...payload,
-      fetchedAt: new Date().toISOString(),
-      source: "reference"
-    }));
-
-  const bestPayload = [localPayload, ...remotePayloads]
-    .sort((a, b) => heartbeatScore(b.state) - heartbeatScore(a.state))[0];
-
-  return {
-    ...bestPayload,
-    ok: true,
-    fetchedAt: new Date().toISOString()
   };
 }
 
