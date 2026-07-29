@@ -256,6 +256,10 @@ function displayFacilities(value) {
 function parseStatePayload(payload) {
   const hb = payload?.state?.heartbeat || payload?.heartbeat || null;
   const stateData = payload?.state || payload || {};
+  document.body.dataset.monitorSource = hb?.source || "";
+  document.body.dataset.monitorFailures = String(hb?.failures || 0);
+  document.body.dataset.monitorMessage = hb?.message || "";
+  document.body.dataset.monitorRequests = String(hb?.total_requests || 0);
   const canceling = (hb?.canceling_items || []).map(item => {
     const detected = item.detected_at ? new Date(item.detected_at) : null;
     const expected = detected ? new Date(detected.getTime() + 2 * 60 * 60 * 1000) : null;
