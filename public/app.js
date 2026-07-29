@@ -5,6 +5,62 @@ const DATA_SOURCES = [
   "https://mangsang-alarm-dashboard.onrender.com/api/state"
 ];
 
+const ROOM_CAPACITY = {
+  "든바다": {
+    "101": 8,
+    "102": 4,
+    "103": 4,
+    "104": 2,
+    "105": 2,
+    "106": 10,
+    "107": 2,
+    "108": 2,
+    "109": 4,
+    "110": 8,
+    "111": 4,
+    "112": 6,
+    "113": 2,
+    "114": 2,
+    "115": 6,
+    "116": 4,
+    "117": 2,
+    "118": 2,
+    "119": 6,
+    "120": 4,
+    "121": 4,
+    "122": 4,
+    "123": 4
+  },
+  "난바다": {
+    "101": 8,
+    "102": 6,
+    "103": 4,
+    "104": 4,
+    "105": 6,
+    "106": 10,
+    "107": 4,
+    "108": 4,
+    "109": 8,
+    "110": 6,
+    "111": 4,
+    "112": 4,
+    "113": 8,
+    "114": 6,
+    "115": 10
+  },
+  "허허바다": {
+    "101": 10,
+    "102": 8,
+    "103": 4,
+    "104": 4,
+    "105": 6,
+    "106": 4,
+    "107": 4,
+    "108": 10
+  },
+  "자동차캠핑장": {}
+};
+
 const state = {
   rows: {
     canceling: [],
@@ -91,39 +147,48 @@ function sectionLines(lines, startLabel, endLabel) {
 function parseCancelingSection(lines) {
   return parseTableRows(sectionLines(lines, "현재 취소진행중", "현재 예약가능"))
     .filter(row => row[0] !== "날짜" && row.length >= 3)
-    .map(row => ({
-      date: row[0],
-      facility: row[1],
-      room: row[2],
-      detected: row[3] || "-",
-      expected: row[4] || "-",
-      remaining: row[5] || "-",
-      status: "발생"
-    }));
+    .map(row => {
+      const facility = normalizeFacilityName(row[1]);
+      return {
+        date: row[0],
+        facility,
+        room: roomWithCapacity(facility, row[2]),
+        detected: row[3] || "-",
+        expected: row[4] || "-",
+        remaining: row[5] || "-",
+        status: "발생"
+      };
+    });
 }
 
 function parseAvailableSection(lines) {
   return parseTableRows(sectionLines(lines, "현재 예약가능", "최근 이력"))
     .filter(row => row[0] !== "날짜" && row.length >= 3)
-    .map(row => ({
-      date: row[0],
-      facility: row[1],
-      room: row[2],
-      status: row[3] || "발생"
-    }));
+    .map(row => {
+      const facility = normalizeFacilityName(row[1]);
+      return {
+        date: row[0],
+        facility,
+        room: roomWithCapacity(facility, row[2]),
+        status: row[3] || "발생"
+      };
+    });
 }
 
 function parseHistorySection(lines) {
   return parseTableRows(sectionLines(lines, "최근 이력", "__END__"))
     .filter(row => row[0] !== "시간" && row.length >= 6)
-    .map(row => ({
-      time: row[0],
-      type: row[1],
-      status: row[2],
-      date: row[3],
-      facility: row[4],
-      room: row[5]
-    }));
+    .map(row => {
+      const facility = normalizeFacilityName(row[4]);
+      return {
+        time: row[0],
+        type: row[1],
+        status: row[2],
+        date: row[3],
+        facility,
+        room: roomWithCapacity(facility, row[5])
+      };
+    });
 }
 
 function parseDashboard(text) {
@@ -248,6 +313,24 @@ function normalizeFacilityName(value) {
   return text || String(value || "").trim();
 }
 
+function roomNumber(value) {
+  const match = String(value || "").match(/(\d+)/);
+  return match ? match[1] : "";
+}
+
+function roomWithCapacity(facility, room) {
+  const roomText = String(room || "").trim();
+  if (!roomText || /\(\d+인\)/.test(roomText)) return roomText;
+
+  const normalizedFacility = normalizeFacilityName(facility);
+  const no = roomNumber(roomText);
+  const capacity = normalizedFacility === "자동차캠핑장"
+    ? 4
+    : ROOM_CAPACITY[normalizedFacility]?.[no];
+
+  return capacity ? `${roomText}(${capacity}인)` : roomText;
+}
+
 function displayFacilities(value) {
   const text = String(value || "").trim();
   if (!text || text === "-") return FACILITIES.join(", ");
@@ -260,30 +343,37 @@ function parseStatePayload(payload) {
   const canceling = (hb?.canceling_items || []).map(item => {
     const detected = item.detected_at ? new Date(item.detected_at) : null;
     const expected = detected ? new Date(detected.getTime() + 2 * 60 * 60 * 1000) : null;
+    const facility = normalizeFacilityName(item.facility);
     return {
       date: shortDate(item.target_date),
-      facility: normalizeFacilityName(item.facility),
-      room: item.room || "",
+      facility,
+      room: roomWithCapacity(facility, item.room),
       detected: shortTime(detected),
       expected: shortTime(expected),
       remaining: remainText(expected),
       status: "발생"
     };
   });
-  const available = (hb?.available_items || []).map(item => ({
-    date: shortDate(item.target_date),
-    facility: normalizeFacilityName(item.facility),
-    room: item.room || "",
-    status: "발생"
-  }));
-  const history = (stateData.events || []).slice().reverse().slice(0, 80).map(event => ({
-    time: historyTime(event.received_at),
-    type: event.event_type === "canceling" ? "취소중" : "예약가능",
-    status: compactStatus(event.state),
-    date: shortDate(event.target_date),
-    facility: normalizeFacilityName(event.facility),
-    room: event.room || ""
-  }));
+  const available = (hb?.available_items || []).map(item => {
+    const facility = normalizeFacilityName(item.facility);
+    return {
+      date: shortDate(item.target_date),
+      facility,
+      room: roomWithCapacity(facility, item.room),
+      status: "발생"
+    };
+  });
+  const history = (stateData.events || []).slice().reverse().slice(0, 80).map(event => {
+    const facility = normalizeFacilityName(event.facility);
+    return {
+      time: historyTime(event.received_at),
+      type: event.event_type === "canceling" ? "취소중" : "예약가능",
+      status: compactStatus(event.state),
+      date: shortDate(event.target_date),
+      facility,
+      room: roomWithCapacity(facility, event.room)
+    };
+  });
 
   return {
     watchState: statusLabel(hb),
