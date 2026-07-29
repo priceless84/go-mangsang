@@ -359,7 +359,7 @@ createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/monitor") {
       json(res, 200, {
         ok: true,
-        enabled: process.env.RENDER_MONITOR !== "false",
+        enabled: true,
         source: state.heartbeat?.source || "-",
         received_at: state.heartbeat?.received_at || null,
         total_requests: state.heartbeat?.total_requests || 0,
@@ -374,7 +374,7 @@ createServer(async (req, res) => {
     if (req.method === "GET" && (url.pathname === "/healthz" || url.pathname === "/z")) {
       json(res, 200, {
         ok: true,
-        enabled: process.env.RENDER_MONITOR !== "false",
+        enabled: true,
         source: state.heartbeat?.source || "-",
         received_at: state.heartbeat?.received_at || null,
         total_requests: state.heartbeat?.total_requests || 0,
@@ -410,9 +410,7 @@ createServer(async (req, res) => {
   }
 }).listen(PORT, () => {
   console.log(`go-mangsang dashboard listening on ${PORT}`);
-  if (process.env.RENDER_MONITOR !== "false") {
-    renderMonitor = createRenderMonitor({ applyReportPayload });
-    renderMonitor.start();
-    console.log("render monitor started");
-  }
+  renderMonitor = createRenderMonitor({ applyReportPayload });
+  renderMonitor.start();
+  console.log("render monitor started");
 });
