@@ -4,8 +4,7 @@ window.stopWatchAll && stopWatchAll();
     "use strict";
 
     const DASHBOARD_URLS = [
-        "https://go-mangsang.onrender.com",
-        "https://mangsang-alarm-dashboard.onrender.com"
+        "https://go-mangsang.onrender.com"
     ];
     const DASHBOARD_URL = DASHBOARD_URLS[0];
 
