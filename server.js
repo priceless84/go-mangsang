@@ -29,7 +29,11 @@ let renderMonitor = null;
 function loadState() {
   try {
     if (existsSync(STATE_FILE)) {
-      return { ...defaultState, ...JSON.parse(readFileSync(STATE_FILE, "utf8")) };
+      const loaded = { ...defaultState, ...JSON.parse(readFileSync(STATE_FILE, "utf8")) };
+      if (loaded.heartbeat?.source && loaded.heartbeat.source !== "render-monitor") {
+        return { ...defaultState };
+      }
+      return loaded;
     }
   } catch (error) {
     console.warn("state load failed:", error.message);
@@ -294,6 +298,10 @@ async function applyReportPayload(payload) {
 
 async function report(req, res) {
   const payload = JSON.parse(await readBody(req) || "{}");
+  if (payload.source && payload.source !== "render-monitor") {
+    json(res, 200, { ok: true, ignored: true, state });
+    return;
+  }
   await applyReportPayload(payload);
   json(res, 200, { ok: true, state });
 }
