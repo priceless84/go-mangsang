@@ -419,7 +419,9 @@ function render(data) {
   renderHistory(state.rows.history);
 
   if (els.referencePanel) {
-    els.referencePanel.hidden = cancelVisible + availableVisible > 0;
+    const useReferenceView = cancelVisible + availableVisible === 0;
+    els.referencePanel.hidden = !useReferenceView;
+    document.body.classList.toggle("reference-mode", useReferenceView);
   }
 
   els.cancelCount.textContent = `${cancelVisible}건`;
