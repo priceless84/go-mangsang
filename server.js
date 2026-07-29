@@ -76,13 +76,15 @@ function liveRowCount(payload) {
   const text = String(payload?.text || "");
   const textCancel = Number(text.match(/취소진행중\s*(\d+)건/)?.[1] || 0);
   const textAvailable = Number(text.match(/예약가능\s*(\d+)건/)?.[1] || 0);
+  const textRows = (text.match(/\d{4}-\d{2}-\d{2}\s+[\s\S]*?\t/g) || []).length;
 
   return (
     (heartbeat?.canceling_items || []).length +
     (heartbeat?.available_items || []).length +
     (stateData.events || []).length +
     textCancel +
-    textAvailable
+    textAvailable +
+    textRows
   );
 }
 
@@ -111,6 +113,10 @@ async function remoteReference() {
   async function pageReference(signal) {
     const pageResponse = await fetch(`${REMOTE_REFERENCE_PAGE_URL}?ts=${Date.now()}`, {
       cache: "no-store",
+      headers: {
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "user-agent": "Mozilla/5.0 go-mangsang-monitor"
+      },
       signal
     });
 
@@ -126,6 +132,10 @@ async function remoteReference() {
   try {
     const response = await fetch(`${REMOTE_REFERENCE_URL}?ts=${Date.now()}`, {
       cache: "no-store",
+      headers: {
+        "accept": "application/json,text/plain,*/*",
+        "user-agent": "Mozilla/5.0 go-mangsang-monitor"
+      },
       signal: controller.signal
     });
 
@@ -153,8 +163,10 @@ async function referencePayload() {
     state
   };
   const remote = await remoteReference();
+  const localCount = liveRowCount(local);
+  const remoteCount = liveRowCount(remote);
 
-  if (remote && liveRowCount(remote) > liveRowCount(local)) {
+  if (remote && (remoteCount > localCount || (localCount === 0 && remote.text))) {
     return {
       ...remote,
       proxiedBy: "go-mangsang"
