@@ -25,7 +25,7 @@ let cookieJar = "";
 function setCookieValues(headers) {
   if (typeof headers.getSetCookie === "function") return headers.getSetCookie();
   const value = headers.get("set-cookie");
-  return value ? [value] : [];
+  return value ? value.split(/,(?=\s*[^;,=\s]+=[^;,]*)/) : [];
 }
 
 function storeCookies(headers) {
@@ -65,6 +65,23 @@ async function ensureSession() {
       signal: controller.signal
     });
     storeCookies(response.headers);
+    const html = await response.text();
+    const netFunnelMatch = html.match(/https:\/\/nf\.campingkorea\.or\.kr\/ts\.wseq[^"'<>\s]+/);
+    if (netFunnelMatch) {
+      const netFunnelUrl = netFunnelMatch[0].replace(/&amp;/g, "&");
+      const netFunnelResponse = await fetch(netFunnelUrl, {
+        headers: {
+          accept: "*/*",
+          "accept-language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+          cookie: cookieJar,
+          referer: CAMPING_HOME_URL,
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
+        },
+        signal: controller.signal
+      });
+      storeCookies(netFunnelResponse.headers);
+      await netFunnelResponse.text();
+    }
   } finally {
     clearTimeout(timeout);
   }
