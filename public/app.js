@@ -30,7 +30,8 @@ const els = {
   historyBadge: document.querySelector("#historyBadge"),
   cancelBody: document.querySelector("#cancelBody"),
   availableBody: document.querySelector("#availableBody"),
-  historyBody: document.querySelector("#historyBody")
+  historyBody: document.querySelector("#historyBody"),
+  referencePanel: document.querySelector("#referencePanel")
 };
 
 function pad(value) {
@@ -404,6 +405,10 @@ function render(data) {
   const cancelVisible = renderCancelRows(state.rows.canceling);
   const availableVisible = renderAvailableRows(state.rows.available);
   renderHistory(state.rows.history);
+
+  if (els.referencePanel) {
+    els.referencePanel.hidden = cancelVisible + availableVisible > 0;
+  }
 
   els.cancelCount.textContent = `${cancelVisible}건`;
   els.availableCount.textContent = `${availableVisible}건`;
