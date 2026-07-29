@@ -1,9 +1,6 @@
 const FACILITIES = ["든바다", "난바다", "허허바다", "자동차캠핑장"];
 const REFRESH_MS = 5000;
-const DATA_SOURCES = [
-  "/api/reference",
-  "https://mangsang-alarm-dashboard.onrender.com/api/reference"
-];
+const DATA_SOURCES = ["/api/reference"];
 
 const state = {
   rows: {
@@ -30,8 +27,7 @@ const els = {
   historyBadge: document.querySelector("#historyBadge"),
   cancelBody: document.querySelector("#cancelBody"),
   availableBody: document.querySelector("#availableBody"),
-  historyBody: document.querySelector("#historyBody"),
-  referencePanel: document.querySelector("#referencePanel")
+  historyBody: document.querySelector("#historyBody")
 };
 
 function pad(value) {
@@ -417,12 +413,6 @@ function render(data) {
   const cancelVisible = renderCancelRows(state.rows.canceling);
   const availableVisible = renderAvailableRows(state.rows.available);
   renderHistory(state.rows.history);
-
-  if (els.referencePanel) {
-    const useReferenceView = cancelVisible + availableVisible === 0;
-    els.referencePanel.hidden = !useReferenceView;
-    document.body.classList.toggle("reference-mode", useReferenceView);
-  }
 
   els.cancelCount.textContent = `${cancelVisible}건`;
   els.availableCount.textContent = `${availableVisible}건`;
