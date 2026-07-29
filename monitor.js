@@ -13,9 +13,9 @@ const CONFIG = {
   trrsrtCode: "1000",
   maxDays: Number(process.env.MONITOR_DAYS || 30),
   intervalSec: Number(process.env.MONITOR_INTERVAL_SEC || 5),
-  concurrency: Number(process.env.MONITOR_CONCURRENCY || 6),
-  requestGapMs: Number(process.env.MONITOR_REQUEST_GAP_MS || 80),
-  timeoutMs: Number(process.env.MONITOR_TIMEOUT_MS || 15000)
+  concurrency: Number(process.env.MONITOR_CONCURRENCY || 24),
+  requestGapMs: Number(process.env.MONITOR_REQUEST_GAP_MS || 0),
+  timeoutMs: Number(process.env.MONITOR_TIMEOUT_MS || 5000)
 };
 
 const ROOM_META = {
