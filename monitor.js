@@ -1,6 +1,8 @@
 "use strict";
 
-const CAMPING_URL = "https://www.campingkorea.or.kr/user/reservation/ND_selectChildFcltyList.do";
+const CAMPING_ORIGIN = "https://www.campingkorea.or.kr";
+const CAMPING_HOME_URL = `${CAMPING_ORIGIN}/index.do`;
+const CAMPING_URL = `${CAMPING_ORIGIN}/user/reservation/ND_selectChildFcltyList.do`;
 
 const CATEGORIES = [
   { code: "1300", name: "든바다", resveNoCodes: ["ME", "MC", "MA", "MG", "MD", "MB"] },
@@ -17,6 +19,56 @@ const CONFIG = {
   requestGapMs: Number(process.env.MONITOR_REQUEST_GAP_MS || 0),
   timeoutMs: Number(process.env.MONITOR_TIMEOUT_MS || 5000)
 };
+
+let cookieJar = "";
+
+function setCookieValues(headers) {
+  if (typeof headers.getSetCookie === "function") return headers.getSetCookie();
+  const value = headers.get("set-cookie");
+  return value ? [value] : [];
+}
+
+function storeCookies(headers) {
+  const cookies = new Map(
+    cookieJar
+      .split(";")
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part => {
+        const index = part.indexOf("=");
+        return [part.slice(0, index), part.slice(index + 1)];
+      })
+  );
+
+  for (const raw of setCookieValues(headers)) {
+    const [pair] = String(raw).split(";");
+    const index = pair.indexOf("=");
+    if (index > 0) cookies.set(pair.slice(0, index).trim(), pair.slice(index + 1).trim());
+  }
+
+  cookieJar = Array.from(cookies, ([key, value]) => `${key}=${value}`).join("; ");
+}
+
+async function ensureSession() {
+  if (cookieJar) return;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), CONFIG.timeoutMs);
+
+  try {
+    const response = await fetch(CAMPING_HOME_URL, {
+      headers: {
+        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "accept-language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
+      },
+      signal: controller.signal
+    });
+    storeCookies(response.headers);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 const ROOM_META = {
   "1300": {
@@ -133,6 +185,8 @@ function itemId(job, item, meta) {
 }
 
 async function requestJob(job) {
+  await ensureSession();
+
   const body = new URLSearchParams({
     trrsrtCode: CONFIG.trrsrtCode,
     fcltyCode: job.category.code,
@@ -144,23 +198,36 @@ async function requestJob(job) {
   const timeout = setTimeout(() => controller.abort(), CONFIG.timeoutMs);
 
   try {
-    const response = await fetch(CAMPING_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "x-requested-with": "XMLHttpRequest",
-        "user-agent": "Mozilla/5.0 MangsangMonitor/1.0",
-        "referer": "https://www.campingkorea.or.kr/index.do"
-      },
-      body,
-      signal: controller.signal
-    });
+    let text = "";
+    let response = null;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      response = await fetch(CAMPING_URL, {
+        method: "POST",
+        headers: {
+          accept: "application/json, text/javascript, */*; q=0.01",
+          "accept-language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+          cookie: cookieJar,
+          origin: CAMPING_ORIGIN,
+          referer: CAMPING_HOME_URL,
+          "x-requested-with": "XMLHttpRequest",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
+        },
+        body,
+        signal: controller.signal
+      });
+      storeCookies(response.headers);
+      text = await response.text();
+      if (!text.trim().startsWith("<")) break;
+      cookieJar = "";
+      await ensureSession();
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
 
-    const text = await response.text();
     const payload = JSON.parse(text);
     const list = payload?.value?.childFcltyList;
     return Array.isArray(list) ? list : [];
