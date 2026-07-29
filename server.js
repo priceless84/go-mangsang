@@ -4,6 +4,7 @@ const { createServer } = require("http");
 const { readFile, mkdir, writeFile } = require("fs/promises");
 const { existsSync, readFileSync } = require("fs");
 const { extname, join, normalize } = require("path");
+const { createRenderMonitor } = require("./monitor");
 
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = join(process.cwd(), "public");
@@ -23,6 +24,7 @@ const defaultState = {
 };
 
 let state = loadState();
+let renderMonitor = null;
 
 function loadState() {
   try {
@@ -217,8 +219,7 @@ function buildEvents(previousItems, currentItems, eventType, now, endedState) {
   return events;
 }
 
-async function report(req, res) {
-  const payload = JSON.parse(await readBody(req) || "{}");
+async function applyReportPayload(payload) {
   const now = payload.refreshedAt || new Date().toISOString();
   const incomingActive = listFromPayload(payload, [
     "active",
@@ -287,6 +288,12 @@ async function report(req, res) {
   };
 
   await saveState();
+  return state;
+}
+
+async function report(req, res) {
+  const payload = JSON.parse(await readBody(req) || "{}");
+  await applyReportPayload(payload);
   json(res, 200, { ok: true, state });
 }
 
@@ -344,6 +351,21 @@ createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/monitor") {
+      json(res, 200, {
+        ok: true,
+        enabled: process.env.RENDER_MONITOR !== "false",
+        source: state.heartbeat?.source || "-",
+        received_at: state.heartbeat?.received_at || null,
+        total_requests: state.heartbeat?.total_requests || 0,
+        failures: state.heartbeat?.failures || 0,
+        message: state.heartbeat?.message || "",
+        canceling: state.heartbeat?.canceling_items?.length || 0,
+        available: state.heartbeat?.available_items?.length || 0
+      });
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/collector-console.js") {
       const body = await readFile(join(process.cwd(), "collector-console.js"));
       send(res, 200, body, {
@@ -367,4 +389,9 @@ createServer(async (req, res) => {
   }
 }).listen(PORT, () => {
   console.log(`go-mangsang dashboard listening on ${PORT}`);
+  if (process.env.RENDER_MONITOR !== "false") {
+    renderMonitor = createRenderMonitor({ applyReportPayload });
+    renderMonitor.start();
+    console.log("render monitor started");
+  }
 });
