@@ -77,40 +77,12 @@ main {
 
 .summary-grid,
 .filter-panel,
-.reference-panel,
 .panel {
   overflow: hidden;
   margin-top: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
-}
-
-.reference-panel[hidden] {
-  display: none;
-}
-
-.reference-panel {
-  height: min(760px, calc(100vh - 170px));
-}
-
-.reference-panel iframe {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: #ffffff;
-}
-
-.reference-mode .summary-grid,
-.reference-mode .filter-panel,
-.reference-mode .panel {
-  display: none;
-}
-
-.reference-mode .reference-panel {
-  height: calc(100vh - 112px);
-  margin-top: 16px;
 }
 
 .summary-grid {
@@ -390,13 +362,8 @@ td {
 
   .summary-grid,
   .filter-panel,
-  .reference-panel,
   .panel {
     margin-top: 10px;
-  }
-
-  .reference-panel {
-    height: calc(100vh - 150px);
   }
 
   .summary-grid {
