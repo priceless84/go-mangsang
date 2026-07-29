@@ -10,7 +10,7 @@ const PUBLIC_DIR = join(process.cwd(), "public");
 const DATA_DIR = join(process.cwd(), ".data");
 const STATE_FILE = join(DATA_DIR, "state.json");
 const REFERENCE_SOURCES = [
-  "https://mangsang-alarm-dashboard.onrender.com/api/reference"
+  "https://mangsang-alarm-dashboard.onrender.com/api/state"
 ];
 
 const mimeTypes = {
@@ -102,7 +102,20 @@ async function fetchReferencePayload(url) {
     if (!response.ok) return null;
 
     const payload = await response.json();
-    return payload?.state ? payload : null;
+
+    if (payload?.state) return payload;
+
+    if (payload?.heartbeat || payload?.events) {
+      return {
+        ok: true,
+        state: {
+          heartbeat: payload.heartbeat || null,
+          events: Array.isArray(payload.events) ? payload.events : []
+        }
+      };
+    }
+
+    return null;
   } catch {
     return null;
   } finally {
