@@ -234,11 +234,13 @@ async function applyReportPayload(payload) {
     "available_items",
     "currentAvailable"
   ]).map(normalizeItem);
+  const previousHeartbeat = state.heartbeat || null;
   const previousItems = state.heartbeat?.canceling_items || [];
   const previousAvailable = state.heartbeat?.available_items || [];
   const hasFailures = Number(payload.failures || 0) > 0;
   const hasAnyIncomingList = incomingActive.length > 0 || incomingAvailable.length > 0;
   const isFinished = payload.phase === "finished" || payload.phase === "complete";
+  const isEmptyFailedReport = isFinished && hasFailures && !hasAnyIncomingList;
   const shouldReplaceActive =
     incomingActive.length > 0 ||
     (isFinished && !hasFailures) ||
@@ -286,6 +288,20 @@ async function applyReportPayload(payload) {
     },
     events: [...state.events, ...events].slice(-300)
   };
+
+  if (isEmptyFailedReport && previousItems.length + previousAvailable.length > 0) {
+    state.heartbeat = {
+      ...state.heartbeat,
+      status: "running",
+      received_at: previousHeartbeat?.received_at || now,
+      last_failed_at: now,
+      last_failed_source: payload.source || "pc-local",
+      total_requests: payload.totalRequests || state.heartbeat.total_requests || 0,
+      completed_requests: payload.completedRequests || state.heartbeat.completed_requests || 0,
+      failures: payload.failures || state.heartbeat.failures || 0,
+      message: payload.monitorError || state.heartbeat.message || ""
+    };
+  }
 
   await saveState();
   return state;
