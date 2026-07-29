@@ -9,6 +9,9 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = join(process.cwd(), "public");
 const DATA_DIR = join(process.cwd(), ".data");
 const STATE_FILE = join(DATA_DIR, "state.json");
+const REFERENCE_SOURCES = [
+  "https://mangsang-alarm-dashboard.onrender.com/api/reference"
+];
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -68,11 +71,70 @@ function json(res, statusCode, payload) {
   });
 }
 
+function heartbeatScore(candidateState) {
+  const heartbeat = candidateState?.heartbeat || null;
+  const canceling = heartbeat?.canceling_items?.length || 0;
+  const available = heartbeat?.available_items?.length || 0;
+  const events = candidateState?.events?.length || 0;
+  const receivedAt = heartbeat?.received_at ? new Date(heartbeat.received_at).getTime() : 0;
+  const liveRows = canceling + available;
+
+  return (
+    liveRows * 1_000_000_000 +
+    events * 1_000_000 +
+    Math.floor((Number.isFinite(receivedAt) ? receivedAt : 0) / 1_000_000_000)
+  );
+}
+
+async function fetchReferencePayload(url) {
+  if (typeof fetch !== "function") return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
+
+  try {
+    const joiner = url.includes("?") ? "&" : "?";
+    const response = await fetch(`${url}${joiner}ts=${Date.now()}`, {
+      cache: "no-store",
+      signal: controller.signal
+    });
+
+    if (!response.ok) return null;
+
+    const payload = await response.json();
+    return payload?.state ? payload : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function referencePayload() {
-  return {
+  const localPayload = {
     ok: true,
     fetchedAt: new Date().toISOString(),
-    state
+    state,
+    source: "local"
+  };
+
+  const remotePayloads = (
+    await Promise.all(REFERENCE_SOURCES.map(fetchReferencePayload))
+  )
+    .filter(Boolean)
+    .map(payload => ({
+      ...payload,
+      fetchedAt: new Date().toISOString(),
+      source: "reference"
+    }));
+
+  const bestPayload = [localPayload, ...remotePayloads]
+    .sort((a, b) => heartbeatScore(b.state) - heartbeatScore(a.state))[0];
+
+  return {
+    ...bestPayload,
+    ok: true,
+    fetchedAt: new Date().toISOString()
   };
 }
 
