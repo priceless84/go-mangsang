@@ -10,6 +10,7 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = join(process.cwd(), "public");
 const DATA_DIR = join(process.cwd(), ".data");
 const STATE_FILE = join(DATA_DIR, "state.json");
+const REFERENCE_STATE_URL = process.env.REFERENCE_STATE_URL || "https://mangsang-alarm-dashboard.onrender.com/api/state";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -86,12 +87,36 @@ function heartbeatScore(candidateState) {
 }
 
 async function referencePayload() {
+  const referenceState = await fetchReferenceState();
+  const selectedState = heartbeatScore(referenceState) > heartbeatScore(state) ? referenceState : state;
+
   return {
     ok: true,
     fetchedAt: new Date().toISOString(),
-    state,
-    source: "local"
+    state: selectedState,
+    source: selectedState === state ? "local" : "reference"
   };
+}
+
+async function fetchReferenceState() {
+  if (!REFERENCE_STATE_URL || typeof fetch !== "function") return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2500);
+
+  try {
+    const response = await fetch(`${REFERENCE_STATE_URL}${REFERENCE_STATE_URL.includes("?") ? "&" : "?"}ts=${Date.now()}`, {
+      cache: "no-store",
+      signal: controller.signal
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    return payload?.state || payload || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function readBody(req) {
@@ -359,11 +384,7 @@ createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/state") {
-      json(res, 200, {
-        ok: true,
-        fetchedAt: new Date().toISOString(),
-        state
-      });
+      json(res, 200, await referencePayload());
       return;
     }
 
