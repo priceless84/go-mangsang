@@ -366,6 +366,22 @@ createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/monitor-status") {
+      json(res, 200, {
+        ok: true,
+        enabled: process.env.RENDER_MONITOR !== "false",
+        source: state.heartbeat?.source || "-",
+        received_at: state.heartbeat?.received_at || null,
+        total_requests: state.heartbeat?.total_requests || 0,
+        completed_requests: state.heartbeat?.completed_requests || 0,
+        failures: state.heartbeat?.failures || 0,
+        message: state.heartbeat?.message || "",
+        canceling: state.heartbeat?.canceling_items?.length || 0,
+        available: state.heartbeat?.available_items?.length || 0
+      });
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/collector-console.js") {
       const body = await readFile(join(process.cwd(), "collector-console.js"));
       send(res, 200, body, {
