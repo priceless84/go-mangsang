@@ -102,6 +102,17 @@ main {
   background: #ffffff;
 }
 
+.reference-mode .summary-grid,
+.reference-mode .filter-panel,
+.reference-mode .panel {
+  display: none;
+}
+
+.reference-mode .reference-panel {
+  height: calc(100vh - 112px);
+  margin-top: 16px;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
