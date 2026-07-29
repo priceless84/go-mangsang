@@ -9,8 +9,6 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = join(process.cwd(), "public");
 const DATA_DIR = join(process.cwd(), ".data");
 const STATE_FILE = join(DATA_DIR, "state.json");
-const REMOTE_REFERENCE_URL = "https://mangsang-alarm-dashboard.onrender.com/api/reference";
-const REMOTE_REFERENCE_PAGE_URL = "https://mangsang-alarm-dashboard.onrender.com/";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -70,110 +68,12 @@ function json(res, statusCode, payload) {
   });
 }
 
-function liveRowCount(payload) {
-  const heartbeat = payload?.state?.heartbeat || payload?.heartbeat || null;
-  const stateData = payload?.state || payload || {};
-  const text = String(payload?.text || "");
-  const textCancel = Number(text.match(/취소진행중\s*(\d+)건/)?.[1] || 0);
-  const textAvailable = Number(text.match(/예약가능\s*(\d+)건/)?.[1] || 0);
-  const textRows = (text.match(/\d{4}-\d{2}-\d{2}\s+[\s\S]*?\t/g) || []).length;
-
-  return (
-    (heartbeat?.canceling_items || []).length +
-    (heartbeat?.available_items || []).length +
-    (stateData.events || []).length +
-    textCancel +
-    textAvailable +
-    textRows
-  );
-}
-
-function htmlToText(html) {
-  return String(html || "")
-    .replace(/<script[\s\S]*?<\/script>/gi, "\n")
-    .replace(/<style[\s\S]*?<\/style>/gi, "\n")
-    .replace(/<\/(tr|p|div|section|article|header|footer|h[1-6]|li)>/gi, "\n")
-    .replace(/<\/(td|th)>/gi, "\t")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\t+\s*\n/g, "\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-async function remoteReference() {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 3500);
-
-  async function pageReference(signal) {
-    const pageResponse = await fetch(`${REMOTE_REFERENCE_PAGE_URL}?ts=${Date.now()}`, {
-      cache: "no-store",
-      headers: {
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "user-agent": "Mozilla/5.0 go-mangsang-monitor"
-      },
-      signal
-    });
-
-    if (!pageResponse.ok) return null;
-
-    return {
-      ok: true,
-      fetchedAt: new Date().toISOString(),
-      text: htmlToText(await pageResponse.text())
-    };
-  }
-
-  try {
-    const response = await fetch(`${REMOTE_REFERENCE_URL}?ts=${Date.now()}`, {
-      cache: "no-store",
-      headers: {
-        "accept": "application/json,text/plain,*/*",
-        "user-agent": "Mozilla/5.0 go-mangsang-monitor"
-      },
-      signal: controller.signal
-    });
-
-    if (response.ok) {
-      const apiPayload = await response.json();
-      if (liveRowCount(apiPayload) > 0) return apiPayload;
-    }
-
-    return await pageReference(controller.signal);
-  } catch {
-    try {
-      return await pageReference(undefined);
-    } catch {
-      return null;
-    }
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 async function referencePayload() {
-  const local = {
+  return {
     ok: true,
     fetchedAt: new Date().toISOString(),
     state
   };
-  const remote = await remoteReference();
-  const localCount = liveRowCount(local);
-  const remoteCount = liveRowCount(remote);
-
-  if (remote && (remoteCount > localCount || (localCount === 0 && remote.text))) {
-    return {
-      ...remote,
-      proxiedBy: "go-mangsang"
-    };
-  }
-
-  return local;
 }
 
 function readBody(req) {
