@@ -298,7 +298,7 @@ async function applyReportPayload(payload) {
 
 async function report(req, res) {
   const payload = JSON.parse(await readBody(req) || "{}");
-  if (payload.source && payload.source !== "render-monitor") {
+  if (payload.source !== "render-monitor") {
     json(res, 200, { ok: true, ignored: true, state });
     return;
   }
