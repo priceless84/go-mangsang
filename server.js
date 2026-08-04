@@ -4,12 +4,13 @@ const { createServer } = require("http");
 const { readFile, mkdir, writeFile } = require("fs/promises");
 const { existsSync, readFileSync } = require("fs");
 const { extname, join, normalize } = require("path");
-const { createRenderMonitor } = require("./monitor");
 
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = join(process.cwd(), "public");
 const DATA_DIR = join(process.cwd(), ".data");
-const STATE_FILE = join(DATA_DIR, "state.json");
+const STATE_FILE = join(DATA_DIR, "watch-interval-state.json");
+const STATE_VERSION = "watch-interval-20260805";
+const FACILITIES = ["든바다", "난바다", "허허바다", "자동차캠핑장"];
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -19,26 +20,27 @@ const mimeTypes = {
 };
 
 const defaultState = {
+  version: STATE_VERSION,
   heartbeat: null,
   events: []
 };
 
 let state = loadState();
-let renderMonitor = null;
 
 function loadState() {
   try {
-    if (existsSync(STATE_FILE)) {
-      const loaded = { ...defaultState, ...JSON.parse(readFileSync(STATE_FILE, "utf8")) };
-      if (loaded.heartbeat?.source && loaded.heartbeat.source !== "render-monitor") {
-        return { ...defaultState };
-      }
-      return loaded;
-    }
+    if (!existsSync(STATE_FILE)) return { ...defaultState };
+    const loaded = JSON.parse(readFileSync(STATE_FILE, "utf8"));
+    if (loaded.version !== STATE_VERSION) return { ...defaultState };
+    return {
+      ...defaultState,
+      ...loaded,
+      events: Array.isArray(loaded.events) ? loaded.events : []
+    };
   } catch (error) {
     console.warn("state load failed:", error.message);
+    return { ...defaultState };
   }
-  return { ...defaultState };
 }
 
 async function saveState() {
@@ -60,10 +62,7 @@ function corsHeaders() {
 }
 
 function send(res, statusCode, body, headers = {}) {
-  res.writeHead(statusCode, {
-    ...corsHeaders(),
-    ...headers
-  });
+  res.writeHead(statusCode, { ...corsHeaders(), ...headers });
   res.end(body);
 }
 
@@ -72,15 +71,6 @@ function json(res, statusCode, payload) {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
   });
-}
-
-function statePayload() {
-  return {
-    ok: true,
-    fetchedAt: new Date().toISOString(),
-    state,
-    source: state.heartbeat?.source || "local"
-  };
 }
 
 function readBody(req) {
@@ -98,15 +88,6 @@ function readBody(req) {
   });
 }
 
-function itemKey(item) {
-  return [
-    item.date || item.target_date || "",
-    item.category || item.facility || "",
-    item.roomName || item.room || "",
-    item.fcltyCode || ""
-  ].join("|");
-}
-
 function normalizeFacilityName(value) {
   const text = String(value || "")
     .replace(/[★☆▶▷▣■●○▲△🚗]/g, "")
@@ -116,23 +97,8 @@ function normalizeFacilityName(value) {
   if (text.includes("든바다")) return "든바다";
   if (text.includes("난바다")) return "난바다";
   if (text.includes("허허바다")) return "허허바다";
-  if (text.includes("자동차")) return "자동차캠핑장";
+  if (text.includes("자동차") || text.includes("차캠핑")) return "자동차캠핑장";
   return text || String(value || "").trim();
-}
-
-function normalizeItem(item) {
-  const facility = normalizeFacilityName(item.category || item.facility || "");
-
-  return {
-    id: item.id || itemKey(item),
-    target_date: item.date || item.target_date || "",
-    facility,
-    room: item.roomName || item.room || "",
-    fclty_code: item.fcltyCode || item.fclty_code || "",
-    fclty_type_code: item.fcltyTyCode || item.fclty_type_code || "",
-    resve_no_code: item.resveNoCode || item.resve_no_code || "",
-    detected_at: item.detectedAt || item.detected_at || new Date().toISOString()
-  };
 }
 
 function listFromPayload(payload, keys) {
@@ -142,16 +108,16 @@ function listFromPayload(payload, keys) {
   return [];
 }
 
-function eventStatus(previousMap, currentMap, item) {
-  const key = itemSignalKey(item);
-  const previous = previousMap.has(key);
-  const current = currentMap.has(key);
-  if (!previous && current) return "발생";
-  if (previous && !current) return "종료 → 목록없음";
-  return null;
+function itemKey(item) {
+  return [
+    item.target_date || item.date || "",
+    normalizeFacilityName(item.facility || item.category || ""),
+    String(item.room || item.roomName || ""),
+    item.fcltyCode || item.fclty_code || ""
+  ].join("|");
 }
 
-function itemSignalKey(item) {
+function signalKey(item) {
   return [
     item.target_date || "",
     normalizeFacilityName(item.facility || ""),
@@ -159,53 +125,64 @@ function itemSignalKey(item) {
   ].join("|");
 }
 
+function normalizeItem(item) {
+  const normalized = {
+    id: item.id || itemKey(item),
+    target_date: item.target_date || item.date || "",
+    facility: normalizeFacilityName(item.facility || item.category || ""),
+    room: item.room || item.roomName || "",
+    fclty_code: item.fclty_code || item.fcltyCode || "",
+    fclty_type_code: item.fclty_type_code || item.fcltyTyCode || "",
+    resve_no_code: item.resve_no_code || item.resveNoCode || "",
+    detected_at: item.detected_at || item.detectedAt || new Date().toISOString()
+  };
+  normalized.id = normalized.id || signalKey(normalized);
+  return normalized;
+}
+
 function preserveFirstDetectedAt(currentItems, previousItems) {
-  const byId = new Map(previousItems.map(item => [item.id || itemKey(item), item]));
-  const bySignal = new Map(previousItems.map(item => [itemSignalKey(item), item]));
+  const byId = new Map(previousItems.map(item => [item.id, item]));
+  const bySignal = new Map(previousItems.map(item => [signalKey(item), item]));
 
   return currentItems.map(item => {
-    const previous = byId.get(item.id || itemKey(item)) || bySignal.get(itemSignalKey(item));
-    if (!previous?.detected_at) return item;
-    return {
-      ...item,
-      detected_at: previous.detected_at
-    };
+    const previous = byId.get(item.id) || bySignal.get(signalKey(item));
+    return previous?.detected_at ? { ...item, detected_at: previous.detected_at } : item;
   });
 }
 
-function buildEvents(previousItems, currentItems, eventType, now, endedState) {
-  const previousMap = new Map(previousItems.map(item => [itemSignalKey(item), item]));
-  const currentMap = new Map(currentItems.map(item => [itemSignalKey(item), item]));
+function makeEvents(previousItems, currentItems, eventType, now, endedState) {
+  const previousMap = new Map(previousItems.map(item => [signalKey(item), item]));
+  const currentMap = new Map(currentItems.map(item => [signalKey(item), item]));
   const events = [];
 
   for (const item of currentItems) {
-    const status = eventStatus(previousMap, currentMap, item);
-    if (status) {
-      events.push({
-        received_at: now,
-        event_type: eventType,
-        state: status,
-        target_date: item.target_date,
-        facility: item.facility,
-        room: item.room
-      });
+    if (!previousMap.has(signalKey(item))) {
+      events.push(toEvent(item, eventType, "발생", now));
     }
   }
 
   for (const item of previousItems) {
-    if (!currentMap.has(itemSignalKey(item))) {
-      events.push({
-        received_at: now,
-        event_type: eventType,
-        state: endedState(item),
-        target_date: item.target_date,
-        facility: item.facility,
-        room: item.room
-      });
+    if (!currentMap.has(signalKey(item))) {
+      events.push(toEvent(item, eventType, endedState(item), now));
     }
   }
 
   return events;
+}
+
+function toEvent(item, eventType, status, now) {
+  return {
+    received_at: now,
+    event_type: eventType,
+    state: status,
+    target_date: item.target_date,
+    facility: item.facility,
+    room: item.room
+  };
+}
+
+function sourceLabel(payload) {
+  return payload.source || "campingkorea-console";
 }
 
 async function applyReportPayload(payload) {
@@ -223,74 +200,55 @@ async function applyReportPayload(payload) {
     "available_items",
     "currentAvailable"
   ]).map(normalizeItem);
-  const previousHeartbeat = state.heartbeat || null;
-  const previousItems = state.heartbeat?.canceling_items || [];
+
+  const previousActive = state.heartbeat?.canceling_items || [];
   const previousAvailable = state.heartbeat?.available_items || [];
-  const hasFailures = Number(payload.failures || 0) > 0;
-  const hasAnyIncomingList = incomingActive.length > 0 || incomingAvailable.length > 0;
-  const isFinished = payload.phase === "finished" || payload.phase === "complete";
-  const isEmptyFailedReport = isFinished && hasFailures && !hasAnyIncomingList;
-  const shouldReplaceActive =
-    incomingActive.length > 0 ||
-    (isFinished && !hasFailures) ||
-    (!state.heartbeat && hasAnyIncomingList);
-  const shouldReplaceAvailable =
-    incomingAvailable.length > 0 ||
-    (isFinished && !hasFailures) ||
-    (!state.heartbeat && hasAnyIncomingList);
-  const available = shouldReplaceAvailable ? preserveFirstDetectedAt(incomingAvailable, previousAvailable) : previousAvailable;
-  const active = shouldReplaceActive ? preserveFirstDetectedAt(incomingActive, previousItems) : previousItems;
-  const events = [];
-  const activeKeys = new Set(active.map(itemSignalKey));
-  const availableKeys = new Set(available.map(itemSignalKey));
+  const failures = Number(payload.failures || 0);
+  const isFinished = ["finished", "complete"].includes(payload.phase);
+  const shouldReplace = isFinished || incomingActive.length > 0 || incomingAvailable.length > 0;
 
-  if (shouldReplaceActive) {
-    events.push(...buildEvents(previousItems, active, "canceling", now, item =>
-      availableKeys.has(itemSignalKey(item))
-        ? "종료 → 예약가능"
-        : "종료 → 예약중"
-    ));
-  }
+  const active = shouldReplace
+    ? preserveFirstDetectedAt(incomingActive, previousActive)
+    : previousActive;
+  const available = shouldReplace
+    ? preserveFirstDetectedAt(incomingAvailable, previousAvailable)
+    : previousAvailable;
 
-  if (shouldReplaceAvailable) {
-    events.push(...buildEvents(previousAvailable, available, "available", now, item =>
-      activeKeys.has(itemSignalKey(item)) ? "종료 → 취소진행중" : "종료 → 예약중"
-    ));
-  }
+  const activeKeys = new Set(active.map(signalKey));
+  const availableKeys = new Set(available.map(signalKey));
+  const events = shouldReplace
+    ? [
+        ...makeEvents(previousActive, active, "canceling", now, item =>
+          availableKeys.has(signalKey(item)) ? "가능종료" : "마감종료"
+        ),
+        ...makeEvents(previousAvailable, available, "available", now, item =>
+          activeKeys.has(signalKey(item)) ? "진행중" : "마감종료"
+        )
+      ]
+    : [];
 
   state = {
+    version: STATE_VERSION,
     heartbeat: {
       status: payload.phase === "stopped" ? "stopped" : "running",
       received_at: now,
-      source: payload.source || "pc-local",
+      source: sourceLabel(payload),
       count: payload.count || 0,
       total_requests: payload.totalRequests || 0,
       completed_requests: payload.completedRequests || 0,
-      failures: payload.failures || 0,
-      interval_sec: payload.intervalSec || 0,
+      failures,
+      interval_sec: payload.intervalSec || 5,
       range: payload.range || "",
-      facilities: ["든바다", "난바다", "허허바다", "자동차캠핑장"],
-      target_dates: [],
+      facilities: Array.isArray(payload.facilities) && payload.facilities.length
+        ? payload.facilities.map(normalizeFacilityName)
+        : FACILITIES,
+      target_dates: Array.isArray(payload.targetDates) ? payload.targetDates : [],
       canceling_items: active,
       available_items: available,
       message: payload.monitorError || ""
     },
-    events: [...state.events, ...events].slice(-300)
+    events: [...state.events, ...events].slice(-500)
   };
-
-  if (isEmptyFailedReport && previousItems.length + previousAvailable.length > 0) {
-    state.heartbeat = {
-      ...state.heartbeat,
-      status: "running",
-      received_at: previousHeartbeat?.received_at || now,
-      last_failed_at: now,
-      last_failed_source: payload.source || "pc-local",
-      total_requests: payload.totalRequests || state.heartbeat.total_requests || 0,
-      completed_requests: payload.completedRequests || state.heartbeat.completed_requests || 0,
-      failures: payload.failures || state.heartbeat.failures || 0,
-      message: payload.monitorError || state.heartbeat.message || ""
-    };
-  }
 
   await saveState();
   return state;
@@ -298,12 +256,23 @@ async function applyReportPayload(payload) {
 
 async function report(req, res) {
   const payload = JSON.parse(await readBody(req) || "{}");
-  if (payload.source !== "render-monitor") {
-    json(res, 200, { ok: true, ignored: true, state });
-    return;
-  }
   await applyReportPayload(payload);
   json(res, 200, { ok: true, state });
+}
+
+async function resetState(res) {
+  state = { ...defaultState, events: [] };
+  await saveState();
+  json(res, 200, { ok: true, state });
+}
+
+function statePayload() {
+  return {
+    ok: true,
+    fetchedAt: new Date().toISOString(),
+    state,
+    source: state.heartbeat?.source || "watch-interval"
+  };
 }
 
 async function serveStatic(req, res) {
@@ -346,43 +315,27 @@ createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/api/reference") {
+    if (req.method === "POST" && url.pathname === "/api/reset") {
+      await resetState(res);
+      return;
+    }
+
+    if (req.method === "GET" && (url.pathname === "/api/state" || url.pathname === "/api/reference")) {
       json(res, 200, statePayload());
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/api/state") {
-      json(res, 200, statePayload());
-      return;
-    }
-
-    if (req.method === "GET" && url.pathname === "/api/monitor") {
+    if (req.method === "GET" && (url.pathname === "/healthz" || url.pathname === "/z" || url.pathname === "/api/monitor")) {
       json(res, 200, {
         ok: true,
-        enabled: true,
+        mode: "watch-interval",
         source: state.heartbeat?.source || "-",
         received_at: state.heartbeat?.received_at || null,
         total_requests: state.heartbeat?.total_requests || 0,
         failures: state.heartbeat?.failures || 0,
-        message: state.heartbeat?.message || "",
         canceling: state.heartbeat?.canceling_items?.length || 0,
-        available: state.heartbeat?.available_items?.length || 0
-      });
-      return;
-    }
-
-    if (req.method === "GET" && (url.pathname === "/healthz" || url.pathname === "/z")) {
-      json(res, 200, {
-        ok: true,
-        enabled: true,
-        source: state.heartbeat?.source || "-",
-        received_at: state.heartbeat?.received_at || null,
-        total_requests: state.heartbeat?.total_requests || 0,
-        completed_requests: state.heartbeat?.completed_requests || 0,
-        failures: state.heartbeat?.failures || 0,
-        message: state.heartbeat?.message || "",
-        canceling: state.heartbeat?.canceling_items?.length || 0,
-        available: state.heartbeat?.available_items?.length || 0
+        available: state.heartbeat?.available_items?.length || 0,
+        message: state.heartbeat?.message || ""
       });
       return;
     }
@@ -409,8 +362,5 @@ createServer(async (req, res) => {
     });
   }
 }).listen(PORT, () => {
-  console.log(`go-mangsang dashboard listening on ${PORT}`);
-  renderMonitor = createRenderMonitor({ applyReportPayload });
-  renderMonitor.start();
-  console.log("render monitor started");
+  console.log(`go-mangsang watch-interval dashboard listening on ${PORT}`);
 });
